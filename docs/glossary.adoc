@@ -1,0 +1,107 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= occupancy-types Glossary
+:toc:
+:icons: font
+
+Vocabulary discipline (ULTRAPLAN §5): *cost grade ≠ occupancy grade ≠ echo
+index ≠ residue measure ≠ warrant*. Each term below has exactly one meaning in
+this project; cross-family borrowing of these words is a bug.
+
+The estate-wide shared glossary (Echo/Epistemic/Tropical/Residual/Choreographic
+families) lives in
+https://github.com/hyperpolymath/nextgen-typing/blob/main/docs/TYPE-CONNECTIONS.adoc[nextgen-typing
+`docs/TYPE-CONNECTIONS.adoc`]. The two vocabularies must not drift: where a
+term exists in both, that document is authoritative for cross-family reading
+and this file is authoritative inside occupancy-types. Cost grade, occupancy
+grade, echo index, residue measure and warrant are pairwise distinct in both.
+
+== Terms
+
+*Cost grade*::
+  A bound on consumed work that composes with `+` in sequence and `max` across
+  alternatives (max-plus). In v0 the only cost grade is the *communication
+  step* count. Never used for memory.
+
+*Occupancy grade*::
+  A bound on live state that composes by the high-water-mark (HWM) monoid
+  `(p₁,n₁)·(p₂,n₂) = (max(p₁, n₁+p₂), n₁+n₂)`, unit `(0,0)`, non-commutative.
+  Not instantiated in v0 (R2–R3). "Live memory counted in examples" is a
+  measurement, not an occupancy grade.
+
+*Communication step*::
+  One `send`, `recv`, `select`, or `case` action. The unit of the v0 cost
+  grade. `close`, `drop`, `alloc`, `new`, `unit` cost 0 steps.
+
+*Max-plus semiring*::
+  `(ℕ ∪ {∞}, max, +, 0)` — the grade algebra of cost. Exposed as the
+  importable `MaxPlus` interface (`src/session_ir/syntax.py`).
+
+*HWM monoid*::
+  The sequential composition law of state resources (see *occupancy grade*).
+  Non-commutative: acquire-then-release composes differently from
+  release-then-acquire. Distinct from the max-plus semiring; neither reduces
+  to the other.
+
+*Linear uniqueness*::
+  The memory discipline of the Session IR: every `Buf` and endpoint name has
+  exactly one owner per program point; ownership moves (delegation), never
+  duplicates. Violations are type errors (`E_ALIAS`, `E_DOUBLE_FREE`,
+  `E_USE_AFTER_DROP`, `E_LEAK`).
+
+*Explicit drop / close*::
+  The only deallocation actions (ULTRAPLAN D5). `drop` frees a `Buf`;
+  `close` consumes an endpoint at `End`. Both are consuming. No GC, no
+  implicit free.
+
+*Session frontier (protocol frontier)*::
+  The point where an endpoint reaches `End` and is closed. ULTRAPLAN §0.3
+  designates it the reclamation point of the session epoch: buffers owned by
+  a dead session are dead. Not implemented in v0; R2 Phase 2.
+
+*Certificate*::
+  A checked bound with an operational reading, produced compositionally at
+  check time (e.g. `Unit | 5`), verifiable without re-running the program.
+  Distinct from an analysis estimate and from a proof of optimality.
+
+*Tightness ratio*::
+  `certified / measured` per unit, reported per run (ULTRAPLAN §6.3). `1.00`
+  is tight; `> 1` is slack (worst-case-by-construction).
+
+*Expected-rejection control*::
+  A committed program (or proof) that must *fail* to check, with the error
+  class pinned. Guards against checker softening. (Session IR:
+  `examples/session_ir/reject_*.sir`; Idris spike: four controls.)
+
+*Kill criterion / kill test*::
+  A pre-written falsifier for a rung. If fired: stop the rung, write a
+  `retraction-ledger.adoc` entry, do not silently redefine success.
+
+*Echo index*::
+  R6+ concept only (post hoc, maybe never): a trace annotation. Not a
+  resource bound. Never appears in v0 code or certificates.
+
+*Residue measure*::
+  Not used in this project. Named here only to keep the boundary sharp
+  (residual-evidence-types is a separate kernel; no imports).
+
+*Warrant*::
+  Not used in this project. No epistemic reading of certificates; a
+  certificate is a number plus an operational argument, nothing more.
+
+== Where each term is realised
+
+[cols="1,2"]
+|===
+| Term | Realisation
+
+| Cost grade | `MaxPlus`, `Γ ⊢ e : A \| r` in `src/session_ir/checker.py`
+| Occupancy grade | R2–R3 (not in v0)
+| Communication step | machine clock in `src/session_ir/machine.py`
+| Linear uniqueness | checker context rules; `E_ALIAS`/`E_LEAK` family
+| Explicit drop/close | `drop`/`close` rules; `E_DOUBLE_FREE`, `E_CLOSE_NOT_END`
+| Certificate | `check` output `A\|r`; `@r` annotations (checked)
+| Tightness ratio | `run` output `certified/measured`
+| Expected-rejection control | `examples/session_ir/manifest.json` reject rows
+| Kill criterion | `ULTRAPLAN.md` + kill tables in `docs/reports/`
+|===

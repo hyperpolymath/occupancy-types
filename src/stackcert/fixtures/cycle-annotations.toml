@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: MPL-2.0
+# annotations/cert for the cycle.* negative-control fixture (no [recursion]):
+# ping -> pong -> ping is a non-self cycle and must be rejected regardless of
+# any certificate (E_CYCLE).
+
+[recursion]

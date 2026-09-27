@@ -1,0 +1,14 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* accept_send_recv.sir — the smallest full session: send one unit, recv it,
+   close both endpoints.
+
+   Grade derivation (max-plus):
+     send = 1, recv = 1, close/close/unit/new = 0, lets add
+     certified r = 2
+   Machine: steps = 2 <= 2, peak_live = 0. *)
+letpair ep1 ep2 = new (!Unit.End) in
+let _ = send ep1 unit in
+let m = recv ep2 in
+let _ = close ep1 in
+let _ = close ep2 in
+unit

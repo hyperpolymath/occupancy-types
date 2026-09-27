@@ -1,0 +1,14 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* accept_annotated.sir — optional @r annotations claim grade bounds on let
+   bindings.  The checker accepts when computed <= claimed (a certificate is
+   an upper bound); slack is allowed.
+
+   send computed 1 <= claimed 2 (slack) ; recv computed 1 = claimed 1 (exact)
+   close computed 0 = claimed 0.
+   Certified r = 2 (computed; annotations are checked, not trusted). *)
+letpair ep1 ep2 = new (!Unit.End) in
+let _ : Unit @ 2 = send ep1 unit in
+let m : Unit @ 1 = recv ep2 in
+let _ @ 0 = close ep1 in
+let _ @ 0 = close ep2 in
+unit

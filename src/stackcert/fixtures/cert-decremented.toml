@@ -1,0 +1,11 @@
+# SPDX-License-Identifier: MPL-2.0
+# Negative control: bound decremented by one (main = 111 < required 112).
+# Expected: rejected.
+
+[cert]
+helper = 16
+mid = 64
+top = 96
+main = 111
+recur = 64
+indirect = 112

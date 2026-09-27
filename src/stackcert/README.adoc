@@ -1,0 +1,128 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= stackcert — stack-depth certificate checker (ULTRAPLAN R1)
+:toc:
+:icons: font
+
+Status: *sources complete; UNVERIFIED in the authoring environment* (no
+`lean`/`lake` on PATH there — toolchain downloads blocked; see
+`docs/retraction-ledger.adoc` §Blocked). Every claim below is either
+code-level ("the file says X") or an exact verification command. Nothing is
+reported as proved until `bash tests/run_stackcert.sh` runs green and its
+output is pasted into `docs/EXPLAINME.adoc`.
+
+== What it is
+
+A certificate checker for worst-case stack depth:
+
+* *Model* — `frame : Fn → ℕ`, `callees : Fn → Finset Fn` (lists-as-sets),
+  `cert : Fn → ℕ`. Rule per function `v`:
+  `cert v ≥ frame v + max_{u ∈ callees v} cert u`.
+* *Self-recursion* — direct self-recursion is supported with an annotated
+  depth `d` (`[recursion]` in `annotations.toml`): the frame inflates to
+  `(d+1) * frame v` for path accounting. Any self-edge without an annotation
+  is rejected. All other cycles are rejected (CLI: `E_CYCLE`; semantically
+  the rule is unsatisfiable around a positive-frame cycle).
+* *Rejects* — dynamic/dynamic-bounded frames without a `[dynamic]` bound,
+  unresolved indirect calls (edges to GCC's `__indirect_call` placeholder
+  must be listed in `[indirect]` and resolve), alloca/VLA/longjmp-family
+  calls, non-self cycles.
+* *Verified core* — `StackcertCore.lean`: `check` and `cert_sound`, zero
+  imports, no holes, no Classical.choice. The theorem: if `check` accepts,
+  every call path's inflated-frame cost is ≤ the certificate of its start
+  function. Verify with `lean StackcertCore.lean`; the `#print axioms`
+  output is the receipt (expected clean — to be pasted into EXPLAINME after
+  the first verified run, not before).
+* *Unverified I/O layer* — `Parsers.lean` + `Main.lean` (parse `.ci`/`.su`/
+  TOML, CLI rejections). Explicitly outside the theorem.
+
+== Inputs
+
+[cols="1,2"]
+|===
+| File | Format (real GCC output, committed fixtures)
+
+| `--ci` | VCG from `gcc -fcallgraph-info=su` (`node: { title: "f" label: ... }`, `edge: { sourcename: ... targetname: ... }`, indirect calls target `__indirect_call`)
+| `--su` | `gcc -fstack-usage` (`file:line:col:func\tbytes\tqualifiers`)
+| `--ann` | `annotations.toml` subset: `[recursion] fn = depth`, `[indirect] fn = ["t", ...]`, `[dynamic] fn = bytes`, `[isr]`, `[threads]`
+| `--cert` | `cert.toml`: `[cert] fn = bytes`
+|===
+
+Fixtures in `fixtures/` are genuine GCC output for `probe.c`/`cycle.c`
+(regenerate with `gcc -O0 -fcallgraph-info=su -fstack-usage -c <file>.c`).
+
+== Verification commands (receipts that do not yet exist)
+
+[source,bash]
+----
+# full harness: core + build + positive fixture + 4 negative controls
+bash tests/run_stackcert.sh
+
+# or by hand:
+cd src/stackcert
+lean StackcertCore.lean          # compiles; #print axioms cert_sound = []
+lake build
+lake exe stackcert --ci fixtures/probe.ci --su fixtures/probe.su \
+  --ann fixtures/annotations.toml --cert fixtures/cert.toml   # exit 0
+lake exe stackcert --ci fixtures/probe.ci --su fixtures/probe.su \
+  --ann fixtures/annotations.toml --cert fixtures/cert-decremented.toml  # exit 1
+----
+
+Negative controls (all must be rejected): decremented bound
+(`cert-decremented.toml`), undeclared self-recursion
+(`annotations-no-recursion.toml`), unresolved indirect call
+(`annotations-no-indirect.toml`), undeclared cycle (`cycle.*`).
+
+== Fixture request — Zephyr ground truth (R1)
+
+The work environment has no `west`/QEMU/Zephyr SDK, so no real-target
+measurement is claimed here. To unblock (ULTRAPLAN D3: Zephyr
+`samples/synchronization` on `qemu_cortex_m3`):
+
+[source,bash]
+----
+# 1. toolchain (one of):  pipx install west;  apt install qemu-system-arm
+#    plus the Zephyr SDK (arm-zephyr-eabi) and a west workspace
+west init -m https://github.com/zephyrproject-rtos/zephyr --mr v3.7.0 ws
+cd ws && west update && west zephyr-export
+
+# 2. build with callgraph + stack-usage info:
+cd zephyr/samples/synchronization
+west build -b qemu_cortex_m3 -- -DEXTRA_CONF_FILE=stackcert.conf \
+  -DCONFIG_CALLGRAPH_INFO=y -DCONFIG_STACK_USAGE=y
+# (flags: add -fcallgraph-info=su -fstack-usage via CFLAGS in stackcert.conf)
+
+# 3. run on QEMU and read painted-stack HWM via k_thread_stack_space_get()
+#    (the sample must paint stacks; measured HWM per thread is the ground truth)
+west build -t run
+
+# 4. check: every thread's measured HWM <= certified thread budget
+#    (certified comes from stackcert on the build's .ci/.su dumps +
+#     [threads] entries in annotations.toml)
+----
+
+Ground-truth protocol (ULTRAPLAN §6), to be filled when the fixture runs:
+record toolchain versions, flags, board/QEMU, workload duration, commit SHAs;
+*measured ≤ certified on every run* (a violation stops the rung and writes a
+ledger entry); report tightness `certified/measured` per thread; keep fixtures
+reproducible with `just measure`.
+
+== R1 kill criterion (pre-registered)
+
+Fires if at the 3-week time box there is none of: a true positive (a real
+program whose certificate is violated or whose budget can be safely reduced),
+a justified budget reduction, or a consumer willing to adopt certificates.
+Until the Zephyr fixture exists, the time box has not started; this is logged
+in the ledger as *blocked*, not as success.
+
+== Layout
+
+----
+src/stackcert/
+  StackcertCore.lean   verified core (check + cert_sound) — zero imports
+  Parsers.lean         .ci/.su/TOML parsing (UNVERIFIED layer)
+  Main.lean            lake exe stackcert CLI (UNVERIFIED layer)
+  lakefile.toml lean-toolchain
+  fixtures/            real GCC outputs + certificates + negative controls
+tests/run_stackcert.sh the harness (exit 2 = fixture request, never a skip)
+----

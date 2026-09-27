@@ -1,0 +1,8 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* reject_leak.sir — BUG: endpoints never closed (linear leak).
+
+   ep1 and ep2 stay in the context at end of program.
+   Expected: E_LEAK. *)
+letpair ep1 ep2 = new (!Unit.End) in
+let _ = send ep1 unit in
+unit

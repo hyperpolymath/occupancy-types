@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: MPL-2.0
+# Negative control: indirect call in indirect() left unresolved.
+# Expected: rejected (E_INDIRECT).
+
+[recursion]
+recur = 1

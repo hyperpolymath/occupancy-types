@@ -1,0 +1,8 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* reject_alias.sir — BUG: the same linear endpoint name used twice (aliasing).
+
+   pair ep1 ep1 would duplicate ownership of one endpoint.
+   Expected: E_ALIAS. *)
+letpair ep1 ep2 = new (!Unit.End) in
+let p = pair ep1 ep1 in
+unit

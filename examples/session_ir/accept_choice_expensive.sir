@@ -1,0 +1,27 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* accept_choice_expensive.sir — same protocol as accept_choice_max.sir but the
+   program takes the EXPENSIVE branch, so the bound is tight.
+
+   select b ep1          -> 1
+   case ep2              -> 1 + max(branch a = 3, branch b = 4) = 5
+   certified r = 6
+   Machine (takes b): steps = 1 + 1 + 2 sends + 2 recvs = 6 <= 6 (tight). *)
+letpair ep1 ep2 = new (+{a: !Unit.End, b: !Unit.!Unit.End}) in
+let _ = select b ep1 in
+case ep2 {
+  a: k.
+    let _ = send ep1 unit in
+    let _ = send ep1 unit in
+    let m = recv k in
+    let _ = close k in
+    let _ = close ep1 in
+    unit,
+  b: k.
+    let _ = send ep1 unit in
+    let _ = send ep1 unit in
+    let m = recv k in
+    let m2 = recv k in
+    let _ = close k in
+    let _ = close ep1 in
+    unit
+}

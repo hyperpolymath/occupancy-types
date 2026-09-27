@@ -24,12 +24,54 @@ image:https://api.thegreenwebfoundation.org/greencheckimage/{{FORGE}}[Green Web,
 
 {{PROJECT_DESCRIPTION}}
 
+== This repository: occupancy-types
+
+Stepwise resource-bounding types: deterministic memory first, network
+resources second. This checkout hosts the *Session IR calculus, checker and
+Idris spike* (ULTRAPLAN R0-B) and the *stackcert* certificate checker (R1)
+on top of the RSR scaffold.
+
+* Plan of record (thesis, rung contract, kill criteria, decision log):
+  link:ULTRAPLAN.md[`ULTRAPLAN.md`]
+* Operational model (what the grade means): link:docs/OPERATIONAL-MODEL.md[`docs/OPERATIONAL-MODEL.md`]
+* Claims-to-files map (with verification status): link:docs/EXPLAINME.adoc[`docs/EXPLAINME.adoc`]
+* Vocabulary: link:docs/glossary.adoc[`docs/glossary.adoc`] ·
+  Retractions & blocked runs: link:docs/retraction-ledger.adoc[`docs/retraction-ledger.adoc`]
+* The gate: `just check` (= proofs + tests + expected-rejection controls +
+  checker on fixtures; `just check-ir` runs the toolchain-free slice)
+
+== Type-family map (estate coherence)
+
+This repo is one node of the hyperpolymath type-theory family. The shared
+map — vocabulary, connection obligations, ownership routing — lives in
+https://github.com/hyperpolymath/nextgen-typing[`nextgen-typing`]:
+link:https://github.com/hyperpolymath/nextgen-typing/blob/main/docs/TYPE-CONNECTIONS.adoc[TYPE-CONNECTIONS.adoc].
+
+* *Question this repo asks* — how do live-state footprints compose, and when
+  are they reclaimed? (Occupancy/HWM grades; protocol frontier = reclamation.)
+* *Boundary* — an occupancy bound is not a cost bound (HWM monoid ≠ max-plus);
+  a measured live-byte count is not an occupancy grade. Cost grades live in
+  link:https://github.com/hyperpolymath/tropical-types[tropical-types]
+  (the ULTRAPLAN name `tropical-resource-typing` resolves there).
+* *Not this repo* — echo indices, warrants, residue measures (shared glossary
+  in TYPE-CONNECTIONS separates all of these from resource grades).
+
+Quick start (Python 3, stdlib only):
+
+[source,bash]
+----
+PYTHONPATH=src python3 -m session_ir test examples/session_ir/manifest.json
+PYTHONPATH=src python3 -m session_ir check examples/session_ir/accept_seq_add.sir
+----
+
 [IMPORTANT]
 ====
-*This file is a template.* You are reading `README.adoc` from the *RSR template repo*
-(or a freshly-cloned copy of it). Run `just repo-init` to replace every `{{PLACEHOLDER}}`
-token with your project's details, then delete this admonition. Until you do, the
-`{{...}}` markers below are intentional placeholders, not content.
+*This file still contains RSR template material.* You are reading `README.adoc`
+from the *RSR template repo* scaffold (or a freshly-cloned copy of it). Run
+`just repo-init` to replace every `{{PLACEHOLDER}}` token with your project's
+details, then delete this admonition. Until you do, the `{{...}}` markers below
+are intentional placeholders, not content. Project-specific truth lives in
+`ULTRAPLAN.md` and `docs/` (see the section above).
 ====
 
 == What this is

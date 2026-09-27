@@ -1,0 +1,12 @@
+# SPDX-License-Identifier: MPL-2.0
+# annotations.toml — stackcert annotations for fixtures/probe.*
+# [recursion] fn = annotated direct self-recursion depth
+# [indirect]  fn = ["possible targets", ...]   (must resolve)
+# [dynamic]   fn = explicit byte bound for dynamic/bounded frames
+# [isr]       fn = ISR level        [threads] fn = thread stack bytes
+
+[recursion]
+recur = 1
+
+[indirect]
+indirect = ["top"]
