@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: MPL-2.0
+# cert.toml — certificate for fixtures/probe.*  (bytes)
+# Derived from probe.su frames + probe.ci edges, rule
+#   cert v >= frame v + max_{u != v} cert u   (recur: iframe = 2 * frame):
+#   helper 16;  mid 48+16=64;  top 32+64=96;  main 16+96=112;
+#   recur (d=1) 2*32=64;  indirect 16+96=112.
+# Hand-computed; the checker re-derives independently.
+
+[cert]
+helper = 16
+mid = 64
+top = 96
+main = 112
+recur = 64
+indirect = 112

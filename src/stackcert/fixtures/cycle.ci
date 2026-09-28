@@ -1,0 +1,6 @@
+graph: { title: "cycle.c"
+node: { title: "ping" label: "ping\ncycle.c:4:6\n32 bytes (static)" }
+edge: { sourcename: "ping" targetname: "pong" label: "cycle.c:4:20" }
+node: { title: "pong" label: "pong\ncycle.c:5:6\n32 bytes (static)" }
+edge: { sourcename: "pong" targetname: "ping" label: "cycle.c:5:20" }
+}

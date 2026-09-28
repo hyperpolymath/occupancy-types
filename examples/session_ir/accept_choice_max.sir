@@ -1,0 +1,33 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* accept_choice_max.sir — alternatives take max (the "choice max" expected
+   bound), and worst-case-by-construction is visible: the program selects the
+   CHEAP branch, so measured < certified.
+
+   ep1 offers +{a: !Unit.End, b: !Unit.!Unit.End}; ep2 offers the dual &.
+   select a ep1          -> 1
+   case ep2              -> 1 + max(branch a = 2, branch b = 3) = 4
+   certified r = 5
+   Machine (takes a): steps = select 1 + case 1 + send 1 + recv 1 = 4 <= 5.
+
+   NOTE: in this single-threaded IR the select fixes which case branch runs;
+   the other branches are dead code but must still typecheck against ep1's
+   post-select type.  Branch b's second recv would await a message that never
+   comes — it is never executed, and the certified bound counts it anyway.
+   That is exactly the point: the bound is worst-case by construction. *)
+letpair ep1 ep2 = new (+{a: !Unit.End, b: !Unit.!Unit.End}) in
+let _ = select a ep1 in
+case ep2 {
+  a: k.
+    let _ = send ep1 unit in
+    let m = recv k in
+    let _ = close k in
+    let _ = close ep1 in
+    unit,
+  b: k.
+    let _ = send ep1 unit in
+    let m = recv k in
+    let m2 = recv k in
+    let _ = close k in
+    let _ = close ep1 in
+    unit
+}

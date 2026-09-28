@@ -8,6 +8,88 @@ image:https://img.shields.io/badge/License-MPL_2.0-blue.svg[License: MPL-2.0,lin
 
 This file explains how the key template claims map to real files.
 
+= occupancy-types — claims to files
+
+Project claims (ULTRAPLAN R0-B + R1). Receipts taxonomy: *TESTED* (command
+run in the work environment, output recorded in the session report),
+*UNVERIFIED* (code + exact commands, toolchain absent — fixture request in
+`docs/retraction-ledger.adoc`), *CONJECTURE* (argued, not yet checked).
+
+== C1. The grade r in Γ ⊢ e : A \| r is a worst-case communication-step bound
+
+Status: *TESTED*.
+
+* Checker: `src/session_ir/checker.py` (six rule shapes over
+  `src/session_ir/syntax.py:MaxPlus`).
+* Stepper: `src/session_ir/machine.py` counts steps on the real reduction;
+  asserts `steps ≤ r`.
+* Evidence: `examples/session_ir/manifest.json` — 14/14 green;
+  `accept_choice_max.sir` certifies 5 and measures 4 (strict);
+  `accept_choice_expensive.sir` certifies 6 and measures 6 (tight).
+* Command: `PYTHONPATH=src python3 -m session_ir test examples/session_ir/manifest.json`
+
+== C2. Linear uniqueness rejects real memory/protocol bugs
+
+Status: *TESTED*.
+
+* Seven expected-rejection controls, each pinning an error class:
+  double-send, drop-then-send (use-after-drop), protocol mismatch,
+  close-before-End, double-free, leak, aliasing
+  (`examples/session_ir/reject_*.sir`, codes asserted in the manifest).
+* Command: same as C1 (reject rows).
+
+== C3. The Phase 0 kill test passes as written
+
+Status: *TESTED* (mechanically).
+
+* `docs/OPERATIONAL-MODEL.md` §2.1: four sentences explaining ⊕ = max,
+  ⊗ = +, banned word absent.
+* Command: `bash scripts/check.sh` stage 2 audits the block (sentence count
+  + banned-word grep).
+
+== C4. Occ: static occupancy/peak indices + linear handles program a bounded buffer
+
+Status: *UNVERIFIED* (no `idris2` in the work environment).
+
+* Code: `src/occ/Occ.idr` (Occ monad, `WithAlloc` linear binder, capacity
+  `LTE (S n) C`, bounded FIFO `Queue k n`), `src/occ/Demo.idr`
+  (`producerConsumer : Occ 0 2 2 (Queue 2 2)` — static peak = K = 2).
+* Expected-rejection controls: `src/occ/Reject{id,Leak,OverCapacity,UseAfterFree}.idr`.
+* Kill question answered provisionally in `src/occ/README.adoc`
+  (CONJECTURE: constant grades tolerable and tight on this example).
+* Commands: `cd src/occ && idris2 --check Occ.idr && idris2 --check Demo.idr`;
+  `bash src/occ/check-rejections.sh`.
+
+== C5. stackcert `check` is sound: accepted certificates bound every call path
+
+Status: *UNVERIFIED* (no `lean` in the work environment).
+
+* Theorem: `StackcertCore.cert_sound` in `src/stackcert/StackcertCore.lean`
+  (zero imports; no holes; no Classical.choice).
+* `#print axioms` footprint: *not yet available*. After the first successful
+  `lean StackcertCore.lean` run, the exact output of
+  `#print axioms StackcertCore.cert_sound` will be pasted here verbatim.
+  Expected form: `'StackcertCore.cert_sound' depends on axioms: [...]`
+  with an empty list — this expectation is CONJECTURE until pasted.
+* Commands: `bash tests/run_stackcert.sh` (core + fixture + four negative
+  controls: decremented bound, undeclared recursion, unresolved indirect,
+  undeclared cycle).
+
+== C6. Fixtures are real compiler output
+
+Status: *TESTED* (provenance), fixture measurements *BLOCKED*.
+
+* `src/stackcert/fixtures/probe.{c,su,ci}` and `cycle.{c,su,ci}` were
+  generated with `gcc -O0 -fcallgraph-info=su -fstack-usage -c <file>.c`
+  (host gcc) and committed; regenerate to re-verify provenance.
+* Zephyr ground truth (painted-stack HWM on qemu_cortex_m3) is a fixture
+  request: exact commands in `src/stackcert/README.adoc`; nothing measured
+  until it runs.
+
+= RSR template claims
+
+The sections below describe the scaffold this project is built on.
+
 == Central Session Protocol Authority
 
 Claim:

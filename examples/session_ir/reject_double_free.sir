@@ -1,0 +1,8 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* reject_double_free.sir — BUG: drop the same buffer twice.
+
+   Expected: E_DOUBLE_FREE. *)
+let x = alloc 4 in
+let _ = drop x in
+let _ = drop x in
+unit

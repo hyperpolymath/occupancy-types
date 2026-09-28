@@ -1,0 +1,6 @@
+# SPDX-License-Identifier: MPL-2.0
+# Negative control: self-recursion on recur() left undeclared.
+# Expected: rejected (selfOk — a self-edge needs a [recursion] depth).
+
+[indirect]
+indirect = ["top"]

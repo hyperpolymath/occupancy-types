@@ -1,0 +1,115 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= Occ — occupancy-indexed state monad spike (ULTRAPLAN R0-B, Piece 2)
+:toc:
+:icons: font
+
+Status: *UNVERIFIED in the work environment that authored it* (no `idris2` on
+PATH there). Receipts below are of two kinds only: (a) what is claimed and
+where the code is, (b) the exact commands that would verify it. Nothing here
+is reported as proven until those commands run green.
+
+== The spike
+
+`Occ.idr` defines the indexed state monad of the mission:
+
+----
+Occ : (pre, post, peak : Nat) -> Type -> Type
+----
+
+* `pre` / `post` — live cells before/after the action (occupancy).
+* `peak` — high-water mark during the action, composed by `max` in `LBind`
+  (absolute indices; this is the cost-vs-state separation: the state axis is
+  an occupancy counter, not a tropical cost).
+* `Alloc C ok` — capacity `C` is a static parameter; `ok : LTE (S n) C` is a
+  compile-time proof. Over-capacity has *no term*.
+* `Free` / `Peek` consume their handle at multiplicity 1; `WithAlloc`'s
+  continuation binder is `(1 h : Handle) -> …`, so QTT enforces one owner.
+* `Queue k n` — bounded buffer of capacity `k` with `n` messages in flight,
+  FIFO, stored as a `Fin n -> Nat` cell function. `QPush` needs `LTE (S n) k`;
+  `QPop` needs `S n` (empty buffers have no pop term).
+
+`Demo.idr` programs the canonical examples:
+
+* `poolDemo : Occ 0 0 2 Unit` — fixed pool, two cells, peak 2.
+* `producerConsumer : Occ 0 2 2 (Queue 2 2)` — capacity-K=2 buffer:
+  push, push (full), pop, push. Static peak = 2 = K.
+
+== Kill question (ULTRAPLAN R0-B): are constant grades tolerable and tight?
+
+*Provisional answer: yes on this example — labelled CONJECTURE until the
+commands below run.*
+
+Evidence in the code (each checkable by the elaborator once `idris2` exists):
+
+1. *Tolerable* — `producerConsumer` is written entirely with literal indices
+   (`Occ 0 2 2 (Queue 2 2)`). No grade anywhere in `Occ.idr`/`Demo.idr` is
+   computed from runtime data; the only compile-time obligations are `LTE`
+   proofs about two fixed numerals (1 ≤ 2, 2 ≤ 2). A producer/consumer loop
+   of *known* shape (this is D6: finite unrolled protocols) needs nothing
+   more.
+2. *Tight* — the derived peak equals the true high-water mark: the buffer
+   really holds 2 messages at the marked point, and the type says `2`, not
+   `3` and not `∞`. `poolDemo`'s peak 2 is likewise exact.
+3. *Static capacity is real* — `RejectOverCapacity.idr` cannot produce
+   `LTE 5 4`; a third push in `producerConsumer` would need `LTE 3 2` and
+   fails the same way.
+
+What would falsify this answer (pre-registered): if making `producerConsumer`
+typecheck required a grade depending on message values, on queue contents, or
+on any runtime quantity — i.e. if the indices had to track anything finer than
+a numeral counter. The mission's kill criterion ("non-trivial only with
+data-dependent grades ⇒ stop, ledger") is therefore *not fired by the code as
+written*; the residual risk is that the code as written does not compile,
+which the commands below decide. If it fails in a way that can only be fixed
+by data-dependent grades, the kill criterion fires and the ledger entry is
+written — no re-scoping.
+
+== Expected-rejection controls
+
+[cols="1,2,2"]
+|===
+| File | Bug | Why it fails
+
+| `RejectDoubleFree.idr` | `free h` twice | multiplicity 1 on `Free` (and state indices clash)
+| `RejectLeak.idr` | alloc, never free | binder `h` used 0 times (the indices alone would NOT catch this)
+| `RejectOverCapacity.idr` | alloc at `n = C` | needs `LTE 5 4`; no such proof
+| `RejectUseAfterFree.idr` | `Peek h` after `Free h` | second use of one linear name (indices alone would NOT catch this)
+|===
+
+Controls 2 and 4 are the interesting pair: they isolate the QTT multiplicity
+discipline from the occupancy indices — each is accepted by one guard and
+rejected by the other.
+
+== Verification commands (the receipts that do not yet exist)
+
+[source,bash]
+----
+# 1. accept modules must compile (%default total, no holes):
+cd src/occ && idris2 --check Occ.idr && idris2 --check Demo.idr
+
+# 2. all four controls must be rejected:
+bash src/occ/check-rejections.sh
+----
+
+Record the toolchain (`idris2 --version`) with any result, per ULTRAPLAN §6.1.
+
+== Deviations from the mission wording (logged, not hidden)
+
+* *"Bounded ring buffer"* — the buffer is a `Fin n -> Nat` FIFO. Ring-buffer
+  *layout* (circular cursors) is orthogonal to occupancy indexing: push/pop
+  sequences and their high-water marks are identical. Layout deferred; the
+  decision log carries this.
+* No interpreter `run : Occ p q m a -> State p -> (a, State q)` is provided.
+  The spike's question is about static indices and linear handles; an
+  interpreter plus the absolute/relative bridge lemma is R0-A/R2 content
+  (ULTRAPLAN attributes the bridge lemma to the algebra rung).
+
+== Where this sits
+
+* Plan: `ULTRAPLAN.md` §4 R0-B. · Operational model: `docs/OPERATIONAL-MODEL.md`.
+* Not registered in `verification/proofs/idris2/MANIFEST` yet: `gated` there
+  means "must compile", and this environment cannot run `idris2`. Registering
+  unverified code as gated would be an unbacked claim. Next task once the
+  toolchain exists: run the commands, register `Occ.idr` + `Demo.idr` as
+  `gated`.

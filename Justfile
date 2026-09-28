@@ -137,18 +137,19 @@ clean-all: clean
 # Run all tests
 test *args:
     #!/usr/bin/env bash
-    # A check that cannot fail is not a check. This recipe MUST be replaced at
-    # mint with the project's real test command; until then it fails loudly
-    # rather than printing "Tests passed!" over an empty run.
-    #
-    # Replace this whole body with one of:
-    #   cargo test --workspace {{args}}
-    #   mix test {{args}}
-    #   zig build test {{args}}
-    #   deno test {{args}}
-    echo "FAIL: \`just test\` has not been wired to a real test command yet." >&2
-    echo "      Edit the 'test' recipe in the Justfile before relying on this gate." >&2
-    exit 1
+    # Project test command (wired at mint per this recipe's instructions):
+    # the Session IR example suite — accepts, expected-rejection controls and
+    # expected bounds, with the stepper asserting steps <= certified grade.
+    PYTHONPATH=src python3 -m session_ir test examples/session_ir/manifest.json {{args}}
+
+# The ULTRAPLAN §5 gate: proofs + tests + expected-rejection controls +
+# checker on fixtures.  Missing toolchains fail loudly with fixture requests
+# (scripts/check.sh).  `just check-ir` is the runnable-only slice.
+check:
+    @bash scripts/check.sh
+
+check-ir:
+    @bash scripts/check.sh --runnable-only
 
 # Run tests with verbose output
 test-verbose:

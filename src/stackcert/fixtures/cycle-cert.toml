@@ -1,0 +1,7 @@
+# SPDX-License-Identifier: MPL-2.0
+# A perfectly "good-looking" certificate for the cyclic fixture.  Correctly
+# rejected anyway: non-self cycles are not certificate-carrying.
+
+[cert]
+ping = 128
+pong = 128

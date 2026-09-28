@@ -1,0 +1,8 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* reject_protocol_mismatch.sir — BUG: send on an endpoint that offers ?A.S.
+
+   ep1 : ?Unit.End — it receives, it does not send.
+   Expected: E_PROTOCOL. *)
+letpair ep1 ep2 = new (?Unit.End) in
+let _ = send ep1 unit in
+unit

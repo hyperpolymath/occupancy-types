@@ -1,0 +1,13 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* accept_seq_add.sir — sequential composition adds: two sends then two recvs.
+
+   Certified r = 1 + 1 + 1 + 1 = 4  (the "sequential add" expected bound).
+   Machine: steps = 4 <= 4. *)
+letpair ep1 ep2 = new (!Unit.!Unit.End) in
+let _ = send ep1 unit in
+let _ = send ep1 unit in
+let m1 = recv ep2 in
+let m2 = recv ep2 in
+let _ = close ep1 in
+let _ = close ep2 in
+unit

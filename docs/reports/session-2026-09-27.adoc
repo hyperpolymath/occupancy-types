@@ -1,0 +1,117 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= Session Report — 2026-09-27 — occupancy-types
+:toc:
+:icons: font
+
+Format: ULTRAPLAN §8. Branch `arena/01a0e2de-occupancy-types`. Work
+environment: Python 3.11.2, gcc (host), make, git; *no* `just`, `idris2`,
+`lean`/`lake`, `west`/QEMU/Zephyr. Toolchain downloads blocked by network
+policy (github.com source + pypi reachable; elan/objects/releases hosts
+blocked). Nothing in this report is measured data unless a command and its
+output are shown.
+
+== Proved
+
+*Nothing is claimed as proved this session.* The one theorem shipped,
+`StackcertCore.cert_sound` (`src/stackcert/StackcertCore.lean`), is written
+to be proved (zero imports, no holes, no Classical.choice) but the work
+environment could not run `lean`. Its `#print axioms` slot in
+`docs/EXPLAINME.adoc` C5 is explicitly unfilled. Status: UNVERIFIED +
+fixture request (ledger §Blocked).
+
+== Tested (commands run in this environment)
+
+Positive / expected-rejection — command:
+`PYTHONPATH=src python3 -m session_ir test examples/session_ir/manifest.json`
+→ *14/14 examples OK* (7 accept with exact judgments A\|r, 7 reject with
+exact error codes; every accept also runs the stepper and asserts
+`steps ≤ grade`, `steps`, and `peak_live` against the manifest).
+
+[cols="1,1,1,1,1"]
+|===
+| example | certified r | measured steps | peak_live (bytes) | tightness r/steps
+
+| accept_send_recv | 2 | 2 | 0 | 1.00
+| accept_seq_add | 4 | 4 | 0 | 1.00
+| accept_choice_max | 5 | 4 | 0 | 1.25 (cheap branch taken)
+| accept_choice_expensive | 6 | 6 | 0 | 1.00
+| accept_buf_delegation | 2 | 2 | 4 | 1.00
+| accept_pair_drop | 0 | 0 | 6 | n/a
+| accept_annotated | 2 | 2 | 0 | 1.00
+|===
+
+Rejects: `E_PROTOCOL`×2 (double-send, mismatch), `E_USE_AFTER_DROP`,
+`E_CLOSE_NOT_END`, `E_DOUBLE_FREE`, `E_LEAK`, `E_ALIAS` — all with the
+pre-registered codes.
+
+Phase 0 kill-test audit (4 sentences, banned word absent) and repo shape
+gates: green (`bash scripts/check.sh --runnable-only`, full output run
+2026-09-27).
+
+Fixtures provenance: `src/stackcert/fixtures/*.su` and `*.ci` generated live
+with `gcc -O0 -fcallgraph-info=su -fstack-usage -c probe.c|cycle.c` (host
+gcc); certificate arithmetic in `cert.toml` re-derives the rule by hand and
+will be checked independently by the exe when `lake` runs.
+
+== Measured
+
+No real-target measurements this session (no QEMU/Zephyr). The session-IR
+table above is machine output of the committed stepper, not hardware data.
+No Zephyr painted-stack numbers exist; none are claimed.
+
+== Open / blocked
+
+* BLOCKED — `idris2` absent: Occ spike (Piece 2) written, unverified.
+  Commands + fixture request: `src/occ/README.adoc`; ledger entry present.
+* BLOCKED — `lean`/`lake` absent (downloads blocked): stackcert (Piece 3)
+  written, unverified. Commands: `tests/run_stackcert.sh`.
+* BLOCKED — Zephyr fixture request (samples/synchronization @ qemu_cortex_m3,
+  painted-stack HWM via `k_thread_stack_space_get`): exact command block in
+  `src/stackcert/README.adoc`. R1 time box has not started.
+* OPEN — `verification/proofs/idris2/MANIFEST` registration for
+  `src/occ/Occ.idr` + `Demo.idr` (as `gated`) once `idris2` confirms they
+  compile. Deliberately not registered before that (a `gated` entry is a
+  "must compile" claim).
+* OPEN — estate language-policy tension (Python deny-list vs ULTRAPLAN D2
+  "Python or Rust"): checker is Python 3 stdlib. Decision logged in
+  ULTRAPLAN §9; revisit if a Rust port is wanted.
+
+== Kill dashboard
+
+[cols="1,1,3"]
+|===
+| Rung / piece | Kill status | Evidence
+
+| R0-B Phase 0 | not fired | kill test passed AND machine-audited (stage 2 of `scripts/check.sh`)
+| R0-B Phase 1 | not fired | rejects are real bug classes; stepper shows steps ≤ grade on every accept (strict inequality demonstrated); errors are coded + positioned
+| R0-B Piece 2 (Occ) | open (pre-registered: not fired by the code as written) | kill question answered CONJECTURE-positive in `src/occ/README.adoc`; falsifier pre-registered there; verdict awaits `idris2`
+| R1 (stackcert) | open | time box not started (fixture blocked)
+|===
+
+Kill criteria that would fire next: (a) Occ example needs data-dependent
+grades to typecheck ⇒ ledger + stop; (b) `cert_sound` fails to compile
+without adding side conditions the model can't justify ⇒ rethink rule;
+(c) measured > certified on any Zephyr run ⇒ stop + ledger (ULTRAPLAN §6.2).
+
+== Retractions
+
+None. See `docs/retraction-ledger.adoc` (also holds the blocked/fixture table).
+
+== Next task ids
+
+1. **T-P2-1** — provision `idris2`; run `src/occ` accept + rejection
+   commands; paste outputs into the session report; register `Occ.idr` /
+   `Demo.idr` as `gated` in `verification/proofs/idris2/MANIFEST`.
+2. **T-P3-1** — provision `lean`/`lake` (elan, toolchain `leanprover/lean4:
+   v4.15.0`); run `tests/run_stackcert.sh`; paste `#print axioms
+   StackcertCore.cert_sound` into `docs/EXPLAINME.adoc` C5.
+3. **T-P3-2** — Zephyr fixture request (owner-side): build
+   `samples/synchronization` for `qemu_cortex_m3` with
+   `-fcallgraph-info=su -fstack-usage`; run under QEMU with painted stacks;
+   record toolchain versions + SHAs; compare measured HWM ≤ certified.
+4. **T-P1-1** — optional: a second pair of eyes on `checker.py` case-merge
+   rule (E_CASE_LINEAR on linear part only) before any R2 work builds on it.
+5. **T-DOC-1** — `just repo-init`-style placeholder cleanup of the root
+  `README.adoc` remains the template's mint procedure; project content lives
+   in `ULTRAPLAN.md` + `docs/` meanwhile.

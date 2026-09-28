@@ -1,0 +1,19 @@
+{
+  "comment": "occupancy-types Session IR example manifest (ULTRAPLAN Phase 1). accept entries pin the expected judgment A|r, measured comm steps and peak live bytes; reject entries pin the expected error code. Runner: python3 -m session_ir test examples/session_ir/manifest.json",
+  "examples": [
+    {"file": "accept_send_recv.sir",       "expect": "accept", "type": "Unit", "grade": 2, "steps": 2, "peak_live": 0},
+    {"file": "accept_seq_add.sir",         "expect": "accept", "type": "Unit", "grade": 4, "steps": 4, "peak_live": 0},
+    {"file": "accept_choice_max.sir",      "expect": "accept", "type": "Unit", "grade": 5, "steps": 4, "peak_live": 0},
+    {"file": "accept_choice_expensive.sir","expect": "accept", "type": "Unit", "grade": 6, "steps": 6, "peak_live": 0},
+    {"file": "accept_buf_delegation.sir",  "expect": "accept", "type": "Unit", "grade": 2, "steps": 2, "peak_live": 4},
+    {"file": "accept_pair_drop.sir",       "expect": "accept", "type": "Unit", "grade": 0, "steps": 0, "peak_live": 6},
+    {"file": "accept_annotated.sir",       "expect": "accept", "type": "Unit", "grade": 2, "steps": 2, "peak_live": 0},
+    {"file": "reject_double_send.sir",     "expect": "reject", "error": "E_PROTOCOL"},
+    {"file": "reject_drop_then_send.sir",  "expect": "reject", "error": "E_USE_AFTER_DROP"},
+    {"file": "reject_protocol_mismatch.sir","expect": "reject", "error": "E_PROTOCOL"},
+    {"file": "reject_close_before_end.sir","expect": "reject", "error": "E_CLOSE_NOT_END"},
+    {"file": "reject_double_free.sir",     "expect": "reject", "error": "E_DOUBLE_FREE"},
+    {"file": "reject_leak.sir",            "expect": "reject", "error": "E_LEAK"},
+    {"file": "reject_alias.sir",           "expect": "reject", "error": "E_ALIAS"}
+  ]
+}

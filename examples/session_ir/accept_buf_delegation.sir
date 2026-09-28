@@ -1,0 +1,15 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* accept_buf_delegation.sir — a linear Buf 4 is sent across the session
+   (delegation), received under a new owner, then explicitly dropped.
+
+   Certified r = send 1 + recv 1 = 2.
+   Machine: steps = 2, peak_live = 4 bytes (the buffer is live across the
+   send; ownership moves to the receiver; drop is the only free). *)
+letpair ep1 ep2 = new (!(Buf 4).End) in
+let x = alloc 4 in
+let _ = send ep1 x in
+let b = recv ep2 in
+let _ = drop b in
+let _ = close ep1 in
+let _ = close ep2 in
+unit

@@ -1,0 +1,6 @@
+probe.c:5:12:helper	16	static
+probe.c:6:5:mid	48	static
+probe.c:7:5:top	32	static
+probe.c:8:5:main	16	static
+probe.c:9:6:recur	32	static
+probe.c:11:6:indirect	16	static

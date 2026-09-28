@@ -1,0 +1,9 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* reject_double_send.sir — BUG: second send on an endpoint already at End.
+
+   After the first send ep1 : End; the second send is a protocol violation.
+   Expected: E_PROTOCOL. *)
+letpair ep1 ep2 = new (!Unit.End) in
+let _ = send ep1 unit in
+let _ = send ep1 unit in
+unit

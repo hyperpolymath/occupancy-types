@@ -1,0 +1,10 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* accept_pair_drop.sir — memory-only program: pair of buffers, letpair,
+   explicit drop of each.  No communication at all.
+
+   Certified r = 0 (alloc/pair/letpair/drop cost 0 communication steps).
+   Machine: steps = 0, peak_live = 2 + 4 = 6 bytes. *)
+letpair b1 b2 = pair (alloc 2) (alloc 4) in
+let _ = drop b1 in
+let _ = drop b2 in
+unit

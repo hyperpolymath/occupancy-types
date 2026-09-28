@@ -1,0 +1,8 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* reject_close_before_end.sir — BUG: close an endpoint that is not at End.
+
+   ep2 : !Unit.End (dual of ?Unit.End) — a send is still owed before close.
+   Expected: E_CLOSE_NOT_END. *)
+letpair ep1 ep2 = new (?Unit.End) in
+let _ = close ep2 in
+unit

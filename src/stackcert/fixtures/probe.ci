@@ -1,0 +1,15 @@
+graph: { title: "probe.c"
+node: { title: "probe.c:helper" label: "helper\nprobe.c:5:12\n16 bytes (static)" }
+node: { title: "mid" label: "mid\nprobe.c:6:5\n48 bytes (static)" }
+edge: { sourcename: "mid" targetname: "probe.c:helper" label: "probe.c:6:25" }
+edge: { sourcename: "mid" targetname: "probe.c:helper" label: "probe.c:6:37" }
+node: { title: "top" label: "top\nprobe.c:7:5\n32 bytes (static)" }
+edge: { sourcename: "top" targetname: "mid" label: "probe.c:7:25" }
+node: { title: "main" label: "main\nprobe.c:8:5\n16 bytes (static)" }
+edge: { sourcename: "main" targetname: "top" label: "probe.c:8:25" }
+node: { title: "recur" label: "recur\nprobe.c:9:6\n32 bytes (static)" }
+edge: { sourcename: "recur" targetname: "recur" label: "probe.c:9:28" }
+node: { title: "indirect" label: "indirect\nprobe.c:11:6\n16 bytes (static)" }
+node: { title: "__indirect_call" label: "Indirect Call Placeholder" shape : ellipse }
+edge: { sourcename: "indirect" targetname: "__indirect_call" label: "probe.c:11:31" }
+}

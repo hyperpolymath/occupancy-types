@@ -23,7 +23,10 @@ REPO_ROOT="${1:-.}"
 DOCS_DIR="$REPO_ROOT/docs"
 
 # Justified exceptions, relative to repo root. Empty by default.
-ALLOWED=()
+# docs/OPERATIONAL-MODEL.md — ULTRAPLAN §4 Phase 0 names this exact path as the
+# rung deliverable ("docs/OPERATIONAL-MODEL.md: machine config ..."), so the
+# filename is fixed by the plan of record. Kept as .md for that reason.
+ALLOWED=("docs/OPERATIONAL-MODEL.md")
 # docs/berrywiki/ and docs/wikis/ are wiki-SYNC source trees: their content is
 # mirrored to/from forge-hosted wikis (GitHub/GitLab), which are inherently
 # Markdown. Converting them to AsciiDoc would break the sync contract, so the
