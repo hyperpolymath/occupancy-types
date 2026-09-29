@@ -117,6 +117,10 @@ predecessors did.
 | yes
 | -
 
+| `ULTRAPLAN.md`
+| yes
+| project plan of record (occupancy-types): thesis, rung contract, ladder, kill criteria, decision log
+
 | `archetypes/`
 | optional
 | template-only variation seam (ADR-0003); `just repo-init` removes it from minted repos
@@ -227,7 +231,6 @@ your own repo - but do not read their emptiness as neglect here.
 | `docs/whitepapers/academic/`
 | `docs/whitepapers/industry/`
 | `docs/whitepapers/outreach/`
-| `examples/`
 | `features/boj-server/`
 | `features/panic-attacker/`
 | `src/aspects/`

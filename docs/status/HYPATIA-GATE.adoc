@@ -1,0 +1,43 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
+= Hypatia Gate & CodeRabbit Branch Audit
+:toc:
+
+== The CodeRabbit Branch That Cannot Be Compared or Merged
+
+The compare link:
+https://github.com/hyperpolymath/occupancy-types/compare/main...coderabbit/fix-hypatia-scan-failures/f36ac704[main...coderabbit/fix-hypatia-scan-failures/f36ac704]
+fails with:
+* *GitHub UI:* "There isn't anything to compare. main and coderabbit/fix-hypatia-scan-failures/f36ac704 are entirely different commit histories. This comparison is taking too long to generate."
+* *GitHub API:* `HTTP 404: No common ancestor between main and coderabbit/fix-hypatia-scan-failures/f36ac704`.
+
+=== Forensic Root Cause
+
+* `main` is at `1b3578b85b309a8b08c52f3e519b6f625e9a0f28` (containing Initial commit `bee27f7`, Dependabot PR #1 `5fe6f86`, and R0-B/Stackcert PR #2 `dafa491` / `1b3578b`).
+* `coderabbit/fix-hypatia-scan-failures/f36ac704` is commit `40296f60f0b3f9307a8deb577d7fe93053aca3fb` ("Initialize coderabbit/fix-hypatia-scan-failures/f36ac704"), created at `2026-09-27T12:35:25Z` (2 seconds after the repo's initial commit).
+* Commit `40296f6` is a **parentless (orphan root) commit** with zero parents. It shares no git ancestor with `bee27f7` or `1b3578b`.
+* Without a common ancestor, git and GitHub cannot compute a merge base, 3-dot diff, or 2-dot diff, preventing GitHub from rendering the comparison or opening a pull request.
+* Crucially, the tree of `40296f6` is an outdated RSR-template snapshot (including obsolete layouts like `machine-readable/` instead of `.machine_readable/`, missing `www/`, missing modernization scripts, adding AGPL-3.0 text, and missing all `occupancy-types` research code).
+* The actual Hypatia ignore entries from https://github.com/hyperpolymath/rsr-template-repo/pull/89[rsr-template-repo#89] (`RE001`, `RE005`, `RE008`) are already present on `main` in `.hypatia-ignore`.
+* Merging this orphan branch would not fix any scan; it would wipe out the repository.
+
+**Recommended owner action:** Delete the remote branch `coderabbit/fix-hypatia-scan-failures/f36ac704`.
+
+== Root Cause of the CI Failures
+
+[cols="1,2,2"]
+|===
+| Check | Root Cause | Fix
+
+| Hypatia Security Scan
+| Reusable workflow `hyperpolymath/standards/.github/workflows/hypatia-scan-reusable.yml@da2c748` clones `hypatia@HEAD` and executes `mix escript.build`. An upstream regression (`hypatia#863` / `standards#1014`) broke the scanner build estate-wide (exiting in ~31s). The scanner never ran, so no consumer code findings occurred. Additionally, the caller workflow lacked `secrets: inherit` to pass `HYPATIA_SCAN_PAT`.
+| Added `secrets: inherit` in `.github/workflows/hypatia-scan.yml`. Note: scanner build failures will resolve upstream once `hypatia@HEAD` builds cleanly.
+
+| Workflows dying with `startup_failure` on `main` (CodeQL, Pages, etc.)
+| Dependabot PR #1 bumped `codeql-action` to 4.38.2 (`2892aa5`) and `haskell-actions/setup` to `v2.12.1` in the YAML without regenerating `.github/workflows/actions.lock`. This desync violates GitHub Actions lock integrity, causing GitHub to refuse the runs at startup with 0 jobs ("This run likely failed because of a workflow file issue."). Furthermore, `codeql-action` v4.38.1/4.38.2 is blocked estate-wide (`nexia-list#100`).
+| Reverted `codeql-action/init` and `analyze` to `b96794f015dfd88f77b49b1c93e0fa7110f94c63` (v4.38.0, pinned in `actions.lock`). Reverted `haskell-actions/setup` to `v2.12.0` (pinned in `actions.lock`).
+
+| Repository Map Determinism Gate
+| `REPOSITORY-MAP.adoc` was missing newly tracked files from PR #2 (`ULTRAPLAN.md` and populated `examples/`).
+| Regenerated `docs/architecture/REPOSITORY-MAP.adoc` via `scripts/gen-repo-map.sh`.
+|===
