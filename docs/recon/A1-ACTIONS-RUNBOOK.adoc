@@ -1,0 +1,250 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= A1 runbook — make Actions start jobs
+:toc:
+:icons: font
+
+*Date:* 2026-10-04 · *Owner:* repository owner (this is the one thing an agent
+cannot do from inside the repository) · *Blocks:* every other item in Tranche A
+
+== 1. What is already established (measured, not assumed)
+
+[cols="2,3",options="header"]
+|===
+| Observation | Evidence
+
+| Job-start failures are total, not partial
+| Last 100 runs: 96 `startup_failure`, 3 `failure`, 1 `success`. Only *4* runs had any
+  job at all — the four Dependabot "Update" workflows.
+
+| It reproduces on the current branch, right now
+| The push of `d5caaca` created run `37236457077` ("Push email notification", event
+  `push`, 2026-10-04T21:31:42Z) → `conclusion: startup_failure`, `jobs: 0`.
+
+| The workflow files themselves are not the problem
+| All 37 workflows report `state: active`. The new ones pass the local gates: SPDX header
+  in the leading comment block, top-level `permissions:`, and
+  `node scripts/check-action-pinning.js` → *exit 0*.
+
+| The local gate passes
+| `bash scripts/check.sh --runnable-only` → exit 0 (Session IR 14/14, kill-test audit,
+  repo shape; proof stages correctly `BLOCKED`, not skipped).
+|===
+
+*Diagnosis:* a failure at job start, at repository level, affecting every workflow
+including ones whose only action is `actions/checkout`. That is the signature of an
+allow-list in `selected` mode with an empty pattern set — the same defect as
+choreographic-programming#16, where `selected` carried zero patterns and so blocked
+*every* action, `actions/checkout` included.
+
+*What is still unknown:* the posture itself. `GET /repos/{owner}/{repo}/actions/permissions`
+returns **403** to this session's token, so the value cannot be read from inside the
+repository. That is why A1 is owner-routed.
+
+== 2. Reading the posture — two routes
+
+=== 2.1 Route A — the settings page (no token, no scopes)
+
+Open https://github.com/hyperpolymath/occupancy-types/settings/actions and read the
+*Actions permissions* section. It is three radio buttons:
+
+[cols="1,3",options="header"]
+|===
+| Radio | What it means here
+| *Allow all actions and reusable workflows* | Posture is fine (case A in §3) — the outage
+  is something else, so do not change anything.
+| *Allow select actions and reusable workflows* | Case B. Read the list underneath: if it
+  is empty, or omits `actions/*`, that is the defect.
+| *Disable actions* | Case C. Actions are off for the repository.
+|===
+
+This route needs no token at all, and it is the recommended one: no scopes, nothing to
+refresh, and the same page is where the fix is applied.
+
+=== 2.2 Route B — the API
+
+[IMPORTANT]
+====
+*Scope correction (2026-10-04).* An earlier revision of this document said
+`gh auth refresh -s admin:repo_hook`. **That was wrong.** `admin:repo_hook` governs
+webhooks, not Actions settings. Per GitHub's REST documentation for the repository-level
+Actions permissions endpoints:
+
+* classic PAT / OAuth token → the *`repo`* scope;
+* fine-grained PAT → *"Administration"* repository permissions (read to GET, write to PUT).
+
+(Worth knowing: the *organisation*-level equivalents need `admin:org`/Administration org
+permissions. Those are not what this repository needs — `hyperpolymath` is a user account,
+so the repository-level setting is authoritative.)
+====
+
+First, see what your current credential can do:
+
+[source,bash]
+----
+gh auth status
+----
+
+If the scopes listed do not include `repo` (or an equivalent fine-grained grant):
+
+[source,bash]
+----
+# Works when gh was authenticated via the browser (OAuth):
+gh auth refresh -s repo
+----
+
+[NOTE]
+====
+`gh auth refresh` expands scopes by opening a browser, which only works for
+*OAuth/browser* logins. If your stored credential is a **personal access token** (the
+`gh auth login --with-token` case), `gh` cannot add scopes to it — refreshing will fail.
+In that case make a new classic PAT at https://github.com/settings/tokens with the
+*`repo`* scope (add `workflow` too, since it governs workflow files) and either log in
+with it or use it for one call:
+
+[source,bash]
+----
+gh auth login --with-token < token.txt
+GH_TOKEN=ghp_xxx gh api repos/hyperpolymath/occupancy-types/actions/permissions --jq .
+----
+====
+
+Then run this **exactly as written**:
+
+[source,bash]
+----
+gh api repos/hyperpolymath/occupancy-types/actions/permissions --jq .
+
+# If the above prints allowed_actions: "selected", list the patterns:
+gh api repos/hyperpolymath/occupancy-types/actions/permissions/selected-actions --jq .
+----
+
+Paste the output. Everything below follows from which of the three cases it is.
+
+[IMPORTANT]
+====
+*The `repos/` prefix is not optional.* `gh api occupancy-types/actions/permissions`
+(no `repos/`) returns *HTTP 404 Not Found* — there is no such route, so the 404 says
+nothing about permissions. Verified directly on 2026-10-04:
+
+[cols="1,1",options="header"]
+|===
+| Command | Result
+| `gh api occupancy-types/actions/permissions` | `404 Not Found` (bad route)
+| `gh api repos/hyperpolymath/occupancy-types/actions/permissions` | route exists
+|===
+
+Two other statuses and what they mean:
+
+* *`403 Resource not accessible by integration`* — an **App/integration** token. Such
+  tokens can never read this endpoint, no matter the scope. This session's token is one
+  of those, which is why the value had to be requested rather than fetched. A normal
+  user login is not affected.
+* *`403` with a message about scopes* (on a user token) — the token lacks the `repo`
+  scope. Fix per §2.2: `gh auth refresh -s repo`, or a new classic PAT with `repo`.
+====
+
+== 3. Read the result
+
+[cols="1,3,3",options="header"]
+|===
+| Case | Output looks like | What it means
+
+| *A*
+| `"enabled": true, "allowed_actions": "all"`
+| Posture is *not* the cause. The outage is elsewhere (runner availability, billing,
+  or a disabled-actions flag at another level). Do not apply the PUT in §4 — it would
+  change nothing and muddy the evidence. Report the output and we re-diagnose.
+
+| *B*
+| `"enabled": true, "allowed_actions": "selected"`, and the selected-actions list is
+  *empty* (or omits `actions/*`)
+| This is the defect. Every action is blocked, including GitHub-owned
+  `actions/checkout`, which is why `jobs: 0` on every run. Apply §4.
+
+| *C*
+| `"enabled": false`
+| Actions are disabled for the repository. Apply §5 first, then §4 if it also reads
+  `selected`.
+|===
+
+== 4. The fix for case B — allow actions
+
+Two options; the first is one command and matches what the rest of the estate runs.
+
+[source,bash]
+----
+# Option 1 (recommended): allow all actions
+gh api -X PUT repos/hyperpolymath/occupancy-types/actions/permissions \
+  -f enabled=true -f allowed_actions=all
+----
+
+[source,bash]
+----
+# Option 2 (tighter): allow GitHub-owned actions + the pinned third parties this repo uses
+gh api -X PUT repos/hyperpolymath/occupancy-types/actions/permissions \
+  -f enabled=true -f allowed_actions=selected \
+  -F github_owned_allowed=true \
+  -F verified_allowed=false \
+  -f 'patterns_allowed[]=actions/*' \
+  -f 'patterns_allowed[]=github/codeql-action/*' \
+  -f 'patterns_allowed[]=dependabot/fetch-metadata@*' \
+  -f 'patterns_allowed[]=erlef/setup-beam@*' \
+  -f 'patterns_allowed[]=haskell-actions/setup@*' \
+  -f 'patterns_allowed[]=oven-sh/setup-bun@*' \
+  -f 'patterns_allowed[]=SonarSource/sonarqube-scan-action@*' \
+  -f 'patterns_allowed[]=hyperpolymath/standards/.github/workflows/*'
+----
+
+Option 2 is stricter but brittle: every new action needs a new pattern, and a missing
+pattern fails as `jobs: 0` — the exact failure being fixed. *Option 1 is recommended*
+precisely because it removes a silent-failure mode rather than narrowing it.
+
+== 5. The fix for case C — enable Actions
+
+[source,bash]
+----
+gh api -X PUT repos/hyperpolymath/occupancy-types/actions/permissions -f enabled=true
+----
+
+== 6. Positive control — prove it worked
+
+Do not trust the badge; count jobs. A workflow that starts is the only evidence a
+workflow can start.
+
+[source,bash]
+----
+# Trigger a run (empty commit is enough and changes no content)
+git commit --allow-empty -m "chore: A1 positive control" && git push
+
+# Then, after ~30s:
+gh api "repos/hyperpolymath/occupancy-types/actions/runs?per_page=5" \
+  --jq '.workflow_runs[] | "\(.id)\t\(.name)\t\(.conclusion)"'
+
+# R1: how many of the last 20 runs actually executed a job?
+for id in $(gh api "repos/hyperpolymath/occupancy-types/actions/runs?per_page=20" \
+              --jq '.workflow_runs[].id'); do
+  printf "%s\t%s\n" "$id" \
+    "$(gh api "repos/hyperpolymath/occupancy-types/actions/runs/$id/jobs" --jq '.total_count')"
+done
+----
+
+*A1 is closed when:* the newest `Session IR (R0-B)` and `Proofs (R0-B Occ, R1 stackcert)`
+runs show `total_count >= 1` and a conclusion other than `startup_failure`.
+
+Both new workflows are `workflow_dispatch`, so they can also be started by hand —
+useful for the control, since it avoids waiting on a path filter:
+
+[source,bash]
+----
+gh workflow run session-ir.yml -R hyperpolymath/occupancy-types
+gh workflow run proofs.yml     -R hyperpolymath/occupancy-types
+----
+
+== 7. Note on scope
+
+`hyperpolymath` is a user account, so the repository-level setting is authoritative;
+there is no organisation policy above it that could override the change. (If this were
+an org-owned repo, an org-level allow-list would win, and the fix would have to be
+applied there instead — worth checking if the outputs above look right but runs still
+show `jobs: 0`.)

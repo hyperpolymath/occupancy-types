@@ -144,3 +144,8 @@ verification/proofs/coq/.*.aux
 # Agda compiled proof artifacts
 verification/proofs/agda/*.agdai
 
+
+# Python bytecode (was tracked inadvertently; see docs/recon/TYPE-FAMILY-POSITION-2026-10-04.md)
+__pycache__/
+*.py[cod]
+*.pyo

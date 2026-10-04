@@ -59,6 +59,11 @@ Status: *UNVERIFIED* (no `idris2` in the work environment).
   (CONJECTURE: constant grades tolerable and tight on this example).
 * Commands: `cd src/occ && idris2 --check Occ.idr && idris2 --check Demo.idr`;
   `bash src/occ/check-rejections.sh`.
+* *CI path (added 2026-10-04):* the `occ-idris` job in
+  `.github/workflows/proofs.yml` builds Idris 2 v0.7.0 over Chez Scheme and
+  runs the same script. It is `continue-on-error: true` *because this rung has
+  never executed anywhere* — a red result is information, not a regression.
+  Remove that flag after the first green run on `main`.
 
 == C5. stackcert `check` is sound: accepted certificates bound every call path
 
@@ -74,6 +79,18 @@ Status: *UNVERIFIED* (no `lean` in the work environment).
 * Commands: `bash tests/run_stackcert.sh` (core + fixture + four negative
   controls: decremented bound, undeclared recursion, unresolved indirect,
   undeclared cycle).
+* *CI path (added 2026-10-04):* the `stackcert` job in
+  `.github/workflows/proofs.yml` installs elan and runs the same harness.
+  Until 2026-10-04 the harness could not have passed even with Lean installed:
+  the repository carried no `lakefile.toml` and no `lean-toolchain`, so
+  `lake build` and `lake exe stackcert` had nothing to act on. Both are now
+  committed, and the version is pinned rather than floating (compare
+  echo-types#322, where an unpinned `apt-get install agda` lets the prover
+  under the proofs change without a commit).
+* *When the run is green,* paste the job's `#print axioms` output verbatim in
+  place of the expectation above, and record the run id. Not before: a
+  predicted footprint is a conjecture, and the point of this repository is
+  that conjectures are labelled.
 
 == C6. Fixtures are real compiler output
 

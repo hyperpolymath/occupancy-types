@@ -31,15 +31,38 @@ requested). Blocked ≠ retracted: no claim has been withdrawn.
 | 2026-09-27
 | Idris 2 spike unverified (no `idris2` on PATH in the work environment)
 | `idris2 --check Occ.idr` from `src/occ/`; `./check-rejections.sh` for the
-  four expected-rejection controls (see `src/occ/README.adoc`)
+  four expected-rejection controls (see `src/occ/README.adoc`). *CI path added
+  2026-10-04:* `occ-idris` job in `.github/workflows/proofs.yml`
+  (Idris 2 v0.7.0 over Chez Scheme, advisory until its first green run).
 | R0-B Piece 2
 
 | 2026-09-27
 | stackcert core unverified (no `lean`/`lake` on PATH)
 | `lake build && lake exe stackcert …` from `src/stackcert/`;
   `lean StackcertCore.lean` then `#print axioms cert_sound` (see
-  `src/stackcert/README.adoc`)
+  `src/stackcert/README.adoc`). *CI path added 2026-10-04:* `stackcert` job in
+  `.github/workflows/proofs.yml` (Lean 4.15.0 via elan).
 | R1 Piece 3
+
+| 2026-10-04
+| *Two blockers were stacked behind one message*: R1's `lake build` /
+  `lake exe stackcert` steps had **no `lakefile.toml` and no `lean-toolchain`
+  anywhere in the repository**, so the rung could not have passed even with a
+  Lean install. The harness's "toolchain absent" report (exit 2) was accurate
+  but incomplete.
+| Fixed in-repo: added `src/stackcert/lakefile.toml` (libs `StackcertCore`,
+  `Parsers`; exe `stackcert` rooted at `Main`) and
+  `src/stackcert/lean-toolchain` (`leanprover/lean4:v4.15.0`). Remaining
+  blocker is the toolchain only, resolved by the `proofs.yml` job.
+| R1 Piece 3
+
+| 2026-10-04
+| Session IR — the estate's only fully-green rung (14/14 locally) — had *no CI
+  lane at all*, so its most credible result carried no clickable receipt.
+| Added `.github/workflows/session-ir.yml`: checker on the 14 pinned fixtures +
+  kill-test audit + repo-shape gates, on any runner's system `python3` (the
+  module is pure standard library).
+| R0-B Phase 1
 
 | 2026-09-27
 | Zephyr ground-truth fixture absent (no `west`/QEMU/Zephyr SDK; fixture
