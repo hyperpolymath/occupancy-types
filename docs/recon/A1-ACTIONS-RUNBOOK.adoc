@@ -51,7 +51,7 @@ classic: `admin:repo_hook` or full `repo`). If `gh` reports a missing scope, ref
 gh auth refresh -s admin:repo_hook
 ----
 
-Then:
+Then run this **exactly as written**:
 
 [source,bash]
 ----
@@ -62,6 +62,29 @@ gh api repos/hyperpolymath/occupancy-types/actions/permissions/selected-actions 
 ----
 
 Paste the output. Everything below follows from which of the three cases it is.
+
+[IMPORTANT]
+====
+*The `repos/` prefix is not optional.* `gh api occupancy-types/actions/permissions`
+(no `repos/`) returns *HTTP 404 Not Found* — there is no such route, so the 404 says
+nothing about permissions. Verified directly on 2026-10-04:
+
+[cols="1,1",options="header"]
+|===
+| Command | Result
+| `gh api occupancy-types/actions/permissions` | `404 Not Found` (bad route)
+| `gh api repos/hyperpolymath/occupancy-types/actions/permissions` | route exists
+|===
+
+Two other statuses and what they mean:
+
+* *`403 Resource not accessible by integration`* — an **App/integration** token. Such
+  tokens can never read this endpoint, no matter the scope. This session's token is one
+  of those, which is why the value had to be requested rather than fetched. A normal
+  user login is not affected.
+* *`403` with a message about scopes* (on a user token) — the token lacks the
+  administration scope. Run `gh auth refresh -s admin:repo_hook` and repeat.
+====
 
 == 3. Read the result
 

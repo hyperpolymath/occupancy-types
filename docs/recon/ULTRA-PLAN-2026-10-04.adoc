@@ -210,9 +210,11 @@ gh api repos/hyperpolymath/occupancy-types/actions/permissions --jq .
 gh api repos/hyperpolymath/occupancy-types/actions/permissions/selected-actions --jq .
 ----
 +
-It returns 403 to me, so this cannot be read from inside the repository.
-`A1-ACTIONS-RUNBOOK.adoc` maps all three possible outputs to their fix and gives the
-positive control (count jobs, do not read badges).
+It returns 403 to me (an App token, which cannot read this endpoint at any scope), so
+this cannot be read from inside the repository. Note the `repos/` prefix is required —
+without it the call returns *404 Not Found*, which is a bad route, not a permissions
+answer. `A1-ACTIONS-RUNBOOK.adoc` maps all three possible outputs to their fix and gives
+the positive control (count jobs, do not read badges).
 . *Scope of my hands* (all tranches). This session can only push
   `arena/01a1087c-occupancy-types` on this repository. For the other repos I can produce
   ready-to-apply patches, or issue bodies, or nothing — your call which.
