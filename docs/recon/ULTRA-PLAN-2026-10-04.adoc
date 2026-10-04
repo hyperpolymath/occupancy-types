@@ -201,7 +201,11 @@ it is research.
 Short, explicit, and each one is a decision or a credential — nothing else:
 
 . *The Actions posture for this repository* (A1) — the one item nothing else can
-  route around. Paste the output of:
+  route around. Either paste the output of the command below, *or* just read the
+  three radio buttons at
+  https://github.com/hyperpolymath/occupancy-types/settings/actions (Actions
+  permissions) and tell me which one is selected — the UI route needs no token
+  and no scopes.
 +
 [source,bash]
 ----

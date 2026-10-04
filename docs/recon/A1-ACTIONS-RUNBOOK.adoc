@@ -41,15 +41,73 @@ choreographic-programming#16, where `selected` carried zero patterns and so bloc
 returns **403** to this session's token, so the value cannot be read from inside the
 repository. That is why A1 is owner-routed.
 
-== 2. What to run (one command)
+== 2. Reading the posture — two routes
 
-Requires a token with Actions administration rights (fine-grained: *Actions* read/write;
-classic: `admin:repo_hook` or full `repo`). If `gh` reports a missing scope, refresh first:
+=== 2.1 Route A — the settings page (no token, no scopes)
+
+Open https://github.com/hyperpolymath/occupancy-types/settings/actions and read the
+*Actions permissions* section. It is three radio buttons:
+
+[cols="1,3",options="header"]
+|===
+| Radio | What it means here
+| *Allow all actions and reusable workflows* | Posture is fine (case A in §3) — the outage
+  is something else, so do not change anything.
+| *Allow select actions and reusable workflows* | Case B. Read the list underneath: if it
+  is empty, or omits `actions/*`, that is the defect.
+| *Disable actions* | Case C. Actions are off for the repository.
+|===
+
+This route needs no token at all, and it is the recommended one: no scopes, nothing to
+refresh, and the same page is where the fix is applied.
+
+=== 2.2 Route B — the API
+
+[IMPORTANT]
+====
+*Scope correction (2026-10-04).* An earlier revision of this document said
+`gh auth refresh -s admin:repo_hook`. **That was wrong.** `admin:repo_hook` governs
+webhooks, not Actions settings. Per GitHub's REST documentation for the repository-level
+Actions permissions endpoints:
+
+* classic PAT / OAuth token → the *`repo`* scope;
+* fine-grained PAT → *"Administration"* repository permissions (read to GET, write to PUT).
+
+(Worth knowing: the *organisation*-level equivalents need `admin:org`/Administration org
+permissions. Those are not what this repository needs — `hyperpolymath` is a user account,
+so the repository-level setting is authoritative.)
+====
+
+First, see what your current credential can do:
 
 [source,bash]
 ----
-gh auth refresh -s admin:repo_hook
+gh auth status
 ----
+
+If the scopes listed do not include `repo` (or an equivalent fine-grained grant):
+
+[source,bash]
+----
+# Works when gh was authenticated via the browser (OAuth):
+gh auth refresh -s repo
+----
+
+[NOTE]
+====
+`gh auth refresh` expands scopes by opening a browser, which only works for
+*OAuth/browser* logins. If your stored credential is a **personal access token** (the
+`gh auth login --with-token` case), `gh` cannot add scopes to it — refreshing will fail.
+In that case make a new classic PAT at https://github.com/settings/tokens with the
+*`repo`* scope (add `workflow` too, since it governs workflow files) and either log in
+with it or use it for one call:
+
+[source,bash]
+----
+gh auth login --with-token < token.txt
+GH_TOKEN=ghp_xxx gh api repos/hyperpolymath/occupancy-types/actions/permissions --jq .
+----
+====
 
 Then run this **exactly as written**:
 
@@ -82,8 +140,8 @@ Two other statuses and what they mean:
   tokens can never read this endpoint, no matter the scope. This session's token is one
   of those, which is why the value had to be requested rather than fetched. A normal
   user login is not affected.
-* *`403` with a message about scopes* (on a user token) — the token lacks the
-  administration scope. Run `gh auth refresh -s admin:repo_hook` and repeat.
+* *`403` with a message about scopes* (on a user token) — the token lacks the `repo`
+  scope. Fix per §2.2: `gh auth refresh -s repo`, or a new classic PAT with `repo`.
 ====
 
 == 3. Read the result
