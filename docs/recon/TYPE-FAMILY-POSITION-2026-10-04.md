@@ -571,7 +571,8 @@ nextgen-languages/kitchenspeak, and a Rust application example in invariant-path
 
 Practical consequence for planning: **for these repos, a green badge is not evidence until
 the underlying workflow actually started.** The recon above therefore cites run ids, not
-badges.
+badges. The coordinated plan's §6 turns this into a measurement rule (two ratios, R1 before R2,
+green-means-executed) — see `COORDINATED-PLAN-2026-10-04.md`.
 
 ### 4.4 Planned already (named, in-tree, not speculation)
 

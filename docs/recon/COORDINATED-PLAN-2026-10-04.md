@@ -51,7 +51,7 @@ plan's job is to make the boundary between *established* and *open* impossible t
 | W1.5 | Lane `experimental/echo-additive` + the 4 bit-narrowing modules | echo-types | automatable | modules in `All.agda`/a lane or archived; issues #320/#321 |
 | W1.6 | Pin the Agda toolchain (drop unpinned `apt-get agda`) | echo-types | automatable | pinned version in workflow; issue #322 |
 | W1.7 | Make CI mirror the local all-provers gate (or say so loudly in CI + README) | absolute-zero | author | issue #161 closed or scoped honestly |
-| W1.8 | **Estate-wide: treat `STARTUP_FAILURE` as failure for required checks** | all | owner (settings) | no PR can merge with zero CI signal; echo-types#330 |
+| W1.8 | **Estate-wide: treat `STARTUP_FAILURE` as failure for required checks** (§6.2) | all | owner (settings) | no PR can merge with zero CI signal; echo-types#330 |
 | W1.9 | File the missing issue(s) for repos with dead CI and no tracker entry | occupancy-types | done (issue #6) | — |
 | W1.10 | Remove tracked `__pycache__` (7 files) + ignore rule | occupancy-types | **done this session** | clean tree |
 
@@ -173,7 +173,113 @@ claim and retain the suite as Agda exposition"*).*
 
 ---
 
-## 6. How to tell whether the plan worked
+## 6. Measurement discipline — how to read a pass rate
+
+*Added 2026-10-04, after the recon. Every figure below was measured that day from the Actions
+API — never from a badge.*
+
+### 6.1 Two ratios, never one
+
+A single "pass rate" is ambiguous in a way that flatters a broken pipeline: a run that never
+executed is still a run, so 96 non-executions read as "96% failing" — and when the gate that
+never starts is the one that would have failed, a disarmed repo can read **green**. Split it:
+
+| Ratio | Definition | Measured 2026-10-04 | Target |
+|---|---|---|---|
+| **R1 · executed / required** | required checks that produced at least one job | **~0/100** in occupancy-types; **≈100%** in the five repos whose proof jobs run | **100%** |
+| **R2 · passed / executed** | executed checks ending in success | **≈100%** in every proof lane measured — epistemic 21/21, residual 39/39, tropical Lean 13/13, absolute-zero Proofs 5/5, echo-types green at HEAD | **100%** for proof lanes; **no threshold** for tightness (6.4) |
+
+The occupancy-types figure in full: of the last 100 runs, 96 `startup_failure`, 3 `failure`,
+1 `success` — and **exactly 4 runs had any job at all**, all four being dependency-graph
+"Update" workflows (pip, hex, npm_and_yarn, github_actions). No gate in that repository has
+ever executed a single job.
+
+**Rule: report R1 before R2.** A pass rate quoted without its execution rate is not a
+measurement — and a "100% pass" over 0 executed checks is precisely what a dead pipeline looks
+like.
+
+### 6.2 Green must mean executed
+
+A green tick is evidence only if a job ran. Enforce three things:
+
+* **`STARTUP_FAILURE` counts as failure** for every required context, and so does a required
+  context that reports no jobs (W1.8; the recommendation in echo-types#330).
+* **Every receipt names a run id and a commit.** `[CI]` in the estate's tagging means "a job
+  started and passed", never "a workflow is listed".
+* **Prefer a revoked badge to a stale one.** A repo whose gates cannot run should say so in the
+  README rather than display workflow badges that no longer execute — the badge is the single
+  most misleading artefact in a disarmed pipeline.
+
+### 6.3 Proof lanes carry zero flake tolerance
+
+Proof checking is deterministic: same toolchain, same inputs, same verdict. There is no
+legitimate "sometimes" for `agda All.agda`. A proof lane's expectation is **100%**, and any
+deviation is a bug in the pipeline or the environment — never noise to budget for.
+
+What the estate's own record shows (last 100 runs per repo, 2026-10-04): every prover red in the
+window had a cause —
+
+* **real breakage** — echo-types' Agda lane on 2026-09-27 (`39a7a99c`) and 2026-09-30
+  (`f11031f2`), the "Typecheck full suite" step failing: main was genuinely broken, then fixed.
+  The cold-check step (`--ignore-interfaces`, no cache) failed in the same runs;
+* **supersede** — a concurrency `cancel` (absolute-zero `Proofs` `27d879f5`; echo-types Agda
+  `36919959218`);
+* **infrastructure** — the `startup_failure` family.
+
+**No case of the same commit passing and failing at random was found.** That distinction is the
+point: *flakiness* trains a team to re-run until green and is the thing to hunt; a
+red-with-a-cause is a bug report carrying a file and a line number, and it is the system working.
+
+The one real drift risk is the environment, and it is documented: echo-types#322 —
+`agda.yml` performs an unpinned `apt-get install -y agda`, so *the prover under the proofs can
+change without a commit*. Pin the toolchain (W1.6) and keep the guardrails already in place:
+`--safe --without-K`, the postulate/escape greps, the `Smoke.agda` pins, the kernel certificate.
+
+### 6.4 Tightness is a distribution, not a gate
+
+Keep the asymmetry ULTRAPLAN §6 already states:
+
+* **Soundness** — *"measured ≤ certified on every run. Violation = stop + ledger entry"* →
+  **100%, zero tolerance**. This is a correctness property, not a benchmark.
+* **Tightness** — *"certified/measured per unit; report distribution"* → **not pass/fail**.
+
+Do not turn tightness into a threshold. A limit loose enough never to fire is decoration; one
+tight enough to fire on measurement noise teaches everyone to ignore red — exactly the failure
+mode 6.3 exists to prevent. Report the distribution, watch it move, and act on trends with a
+named cause.
+
+Also note the current state: **nothing has been measured yet.** The Zephyr painted-stack fixture
+(W4.3) is still a fixture request, so R1 ground truth does not exist. "Benchmarks occasionally
+drift" is not the situation; "no benchmark has ever run" is.
+
+Retries are permitted for genuinely non-deterministic infrastructure — package/action downloads,
+superseded runs, cancelled fuzz batches — and are **never** permitted to produce a green verdict
+on a claim that was not checked. Blocked ≠ retracted; blocked ≠ passed.
+
+### 6.5 Three kinds of red, three responses
+
+| Kind | Signature | Response |
+|---|---|---|
+| **Real breakage** | job ran; a named step failed | Fix or revert; the run id goes in the ledger entry |
+| **Environment / infrastructure** | job never started, or a dependency fetch failed | Fix the cause (pin, allow-list, retry policy) and file it; never re-run to green |
+| **Supersede / cancel** | `cancelled`; a newer run exists on the same ref | Nothing — but confirm a later run executed |
+
+### 6.6 Recompute it
+
+```bash
+# R1/R2 inputs for a repo — conclusions, from the API, not badges
+gh api "repos/hyperpolymath/occupancy-types/actions/runs?per_page=100" \
+  --jq '[.workflow_runs[].conclusion] | group_by(.) | map({(.[0]): length}) | add'
+
+# R1 precisely: did a run actually execute any job?
+gh api "repos/hyperpolymath/occupancy-types/actions/runs/<run-id>/jobs" --jq '.total_count'
+```
+
+---
+
+## 7. How to tell whether the plan worked
+
+*Measure everything below with §6's ratios: **R1 before R2**, and green-means-executed.*
 
 Falsifiable, in order of cheapness:
 
