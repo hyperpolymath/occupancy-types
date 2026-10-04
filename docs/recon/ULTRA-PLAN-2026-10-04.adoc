@@ -57,6 +57,14 @@ toc::[]
   (Two refs were unpinned on `main` since they were introduced; see A8.)
 |===
 
+| The outage reproduces on this branch, in the current hour
+| The push of `d5caaca` created run `37236457077` ("Push email notification", 21:31:42Z)
+  → `startup_failure`, `jobs: 0`. All 37 workflows report `state: active`. So the workflow
+  *files* are fine (they also pass the SPDX, permissions and pinning gates); jobs die at
+  start. Signature matches choreographic#16: `selected` with an empty pattern set, which
+  blocks GitHub-owned `actions/checkout` too.
+|===
+
 *Correction to an earlier reading:* `scripts/check-lock-sync.sh` is **not** defective.
 It aborts here with `FATAL: no awk supporting 3-argument match() (need gawk)` — which is a
 clear message and exit 1. Its behaviour is right; the sandbox simply lacks `gawk`. Any
@@ -109,8 +117,9 @@ it is research.
 | ID | Task | Route | Acceptance
 
 | A1 | Read the Actions posture; if `selected` with a short list, PUT the canon payload
-  (issue #6) | *OWNER* | a push to `main` where `Secret Scanner`, `Governance` and a
-  checker job *start* (jobs ≥ 1)
+  (issue #6) — see the dedicated `A1-ACTIONS-RUNBOOK.adoc` | *OWNER* | a push where
+  `Session IR` and `Proofs` *start* (`total_count >= 1`, conclusion ≠ `startup_failure`).
+  *This is the only item blocking Tranche A; everything else in A waits on it.*
 | A2 | Wire the session-IR lane into CI | *AGENT*→*CI* — **done in-repo, dormant until A1** |
   `.github/workflows/session-ir.yml` committed: the 14 pinned fixtures + kill-test audit +
   repo-shape gates, on the runner's system `python3` (pure stdlib). Cannot *execute* until A1.
@@ -191,9 +200,19 @@ it is research.
 
 Short, explicit, and each one is a decision or a credential — nothing else:
 
-. *The Actions posture for this repository* (A1). It is owner-only. Either run the PUT
-  with the canon payload, or tell me what Settings → Actions shows and I will prepare the
-  exact command and the positive control.
+. *The Actions posture for this repository* (A1) — the one item nothing else can
+  route around. Paste the output of:
++
+[source,bash]
+----
+gh api repos/hyperpolymath/occupancy-types/actions/permissions --jq .
+# and, if it reads "selected":
+gh api repos/hyperpolymath/occupancy-types/actions/permissions/selected-actions --jq .
+----
++
+It returns 403 to me, so this cannot be read from inside the repository.
+`A1-ACTIONS-RUNBOOK.adoc` maps all three possible outputs to their fix and gives the
+positive control (count jobs, do not read badges).
 . *Scope of my hands* (all tranches). This session can only push
   `arena/01a1087c-occupancy-types` on this repository. For the other repos I can produce
   ready-to-apply patches, or issue bodies, or nothing — your call which.
