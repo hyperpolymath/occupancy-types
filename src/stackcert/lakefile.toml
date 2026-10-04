@@ -1,0 +1,30 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+#
+# Lake build definition for the stackcert R1 artefacts.
+#
+# WHY THIS FILE EXISTS: ULTRAPLAN R1 declares stackcert's verification command
+# as `bash tests/run_stackcert.sh`, whose stage 2 runs `lake build` and stage 3
+# runs `lake exe stackcert`.  Neither could have succeeded without a lake
+# definition, so the harness's "toolchain absent" report was two blockers
+# stacked: missing build scaffolding *and* an absent toolchain.  This file
+# supplies the first.  The second is a toolchain/CI concern, not a proof claim,
+# and is handled by .github/workflows/proofs.yml.
+#
+# The verified/UNVERIFIED split is unchanged by this file (see README.adoc):
+#   StackcertCore  — the verified core (zero imports, no Mathlib, no holes)
+#   Parsers, Main  — the I/O and CLI layer, explicitly outside cert_sound
+
+name = "stackcert"
+version = "0.1.0"
+defaultTargets = ["stackcert"]
+
+[[lean_lib]]
+name = "StackcertCore"
+
+[[lean_lib]]
+name = "Parsers"
+
+[[lean_exe]]
+name = "stackcert"
+root = "Main"

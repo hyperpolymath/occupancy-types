@@ -1,0 +1,229 @@
+// SPDX-License-Identifier: CC-BY-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+= Ultra-plan — the rest of the work
+:toc: macro
+:toclevels: 3
+:icons: font
+
+*Date:* 2026-10-04 · *Base commit:* `2e276c3` + this session's branch
+· *Companions:* `TYPE-FAMILY-POSITION-2026-10-04.adoc` (what is true),
+`COORDINATED-PLAN-2026-10-04.adoc` (workstreams W1–W5 and §6 measurement discipline)
+
+toc::[]
+
+== 0. What changed today (receipts, not intentions)
+
+[cols="1,3",options="header"]
+|===
+| Change | Evidence
+
+| Gate re-run locally, still green
+| `bash scripts/check.sh --runnable-only` → *exit 0*; session-IR 14/14; kill-test audit
+  PASS; repo-shape PASS; stages 4–5 correctly *BLOCKED* (never a silent skip).
+
+| *Defect found and fixed:* R1 had **no `lakefile.toml` and no `lean-toolchain`**
+| `tests/run_stackcert.sh` stage 2 runs `lake build` and stage 3 `lake exe stackcert`
+  — neither could ever have passed. The harness reported "toolchain absent", which was
+  true but hid a second, permanent blocker. Added `src/stackcert/lakefile.toml`
+  (libs `StackcertCore`, `Parsers`; exe `stackcert` rooted at `Main`) and
+  `src/stackcert/lean-toolchain` (`leanprover/lean4:v4.15.0`).
+
+| Both blocked rungs now have a *CI execution path*
+| Added `.github/workflows/proofs.yml`: `stackcert` (Lean 4.15.0 via elan, strict) and
+  `occ-idris` (Idris 2 v0.7.0 built over Chez Scheme; *advisory* until its first green
+  run). Only `actions/checkout` is used — no third-party action, so the allow-list
+  posture (issue #6) cannot kill these jobs at startup.
+
+| Markdown-gate regression I had introduced, fixed
+| The three recon documents were `.md` under `docs/`, which the estate rule forbids.
+  `TYPE-FAMILY-POSITION` and `COORDINATED-PLAN` converted to AsciiDoc; the follower
+  notes moved *out of the public repo* (unsent drafts about named people) and remain a
+  working copy. `bash scripts/check-no-md-in-docs.sh .` → PASS.
+
+| Sandbox limits measured, not assumed
+| Only `github.com`, `api.github.com` and `pypi.org` are reachable here;
+  `release-assets.githubusercontent.com` / `elan.lean-lang.org` / `deb.debian.org` are
+  not. So Lean/Idris cannot be fetched *here* — but GitHub runners can.
+
+| *Pre-existing defect found:* the action-pinning gate is already red on `main`
+| `node scripts/check-action-pinning.js` → exit 1:
+  `.github/workflows/pages.yml:37` (`haskell-actions/setup@v2.12.1`) and
+  `.github/workflows/sonarqube.yml:67` (`SonarSource/sonarqube-scan-action@v8.3.0`)
+  resolve through neither an inline SHA nor `actions.lock`. Both my new workflows
+  pass the gate. Fix: pin the two refs to SHAs, or run `gh actions-lock`.
+
+| *Gate fixed:* the action-pinning gate now exits 0 for the first time
+| `node scripts/check-action-pinning.js` → *exit 0*, "all action refs are pinned".
+  (Two refs were unpinned on `main` since they were introduced; see A8.)
+|===
+
+*Correction to an earlier reading:* `scripts/check-lock-sync.sh` is **not** defective.
+It aborts here with `FATAL: no awk supporting 3-argument match() (need gawk)` — which is a
+clear message and exit 1. Its behaviour is right; the sandbox simply lacks `gawk`. Any
+runner that must execute it needs `gawk` installed.
+
+=== What this means for planning
+
+The estate's blockers split cleanly into three kinds, and only the third needs the
+author:
+
+. *Scaffolding* (no lakefile, no lock, no lane) — fixable in-repo, today.
+. *Execution* (toolchain absent) — fixable by CI, once workflows can start.
+. *Authority* (Actions settings, credentials, priority) — owner-only.
+
+The rest of this plan is ordered along that split. Nothing below asks the author to do
+work an agent or a CI job can do first.
+
+== 1. The rule for the rest of the work
+
+[quote]
+____
+*No outreach until the house is closed.* The follower notes do not go out while this
+repository's own gates cannot run, while a rung it claims is unverified, or while a
+state file contradicts its receipts. Advice about verification, sent from a repository
+that cannot verify, is the fastest way to lose the audience it is addressed to.
+____
+
+Corollary: W5.7/W5.8 (outreach) are *gated tasks*. They open when Tranche A is closed —
+not before, and not "in parallel because they are independent".
+
+== 2. Owner routing
+
+[cols="1,2,3",options="header"]
+|===
+| Route | Meaning | Typical tasks
+
+| *AGENT* | In-repo, no toolchain, no credentials | docs, workflows, ledgers, conversion, checks
+| *CI* | Runs on GitHub runners; needs an execution path to exist | stackcert, Occ spike, session-IR lane
+| *OWNER* | Needs repository settings, credentials, or a decision | Actions allow-list PUT, priority calls, repo access
+| *HOST* | Needs a machine with toolchains (his laptop, devcontainer, guix shell) | local confirmation runs, Zephyr fixture
+|===
+
+== 3. Tranche A — close the house (this week)
+
+*A is closed when every item below has a receipt.* All of A is agent/owner work; none of
+it is research.
+
+[cols="1,2,1,3",options="header"]
+|===
+| ID | Task | Route | Acceptance
+
+| A1 | Read the Actions posture; if `selected` with a short list, PUT the canon payload
+  (issue #6) | *OWNER* | a push to `main` where `Secret Scanner`, `Governance` and a
+  checker job *start* (jobs ≥ 1)
+| A2 | Wire the session-IR lane into CI | *AGENT*→*CI* — **done in-repo, dormant until A1** |
+  `.github/workflows/session-ir.yml` committed: the 14 pinned fixtures + kill-test audit +
+  repo-shape gates, on the runner's system `python3` (pure stdlib). Cannot *execute* until A1.
+| A8 | Pin the two unpinned action refs — **done** | *AGENT* | `node scripts/check-action-pinning.js`
+  → *exit 0*. `haskell-actions/setup@v2.12.1` → `0f8e8c99d88aeb3fbfd523f1ef2c6f762d10d64d`
+  and `SonarSource/sonarqube-scan-action@v8.3.0` → `d209202bc7d53ff1cc128f7f907dac145c9d6ae9`,
+  each with the tag kept as a trailing comment
+| A9 | Ensure `gawk` is present wherever `scripts/check-lock-sync.sh` runs | *AGENT* | the script
+  runs instead of aborting; it already fails correctly (exit 1, clear message)
+| A3 | First green `proofs.yml` run | *CI* | `R1 stackcert (Lean 4)` green; its log carries
+  the `#print axioms` line, pasted into `docs/EXPLAINME.adoc` C5
+| A4 | First `occ-idris` run | *CI* | advisory job green, then `continue-on-error` removed
+  and the CONJECTURE in EXPLAINME C4 becomes a pasted result
+| A5 | Treat `STARTUP_FAILURE` as failure for required checks (estate-wide) | *OWNER* | a
+  required context that never starts cannot show green (echo-types#330)
+| A6 | Re-run `bash scripts/check.sh` (full mode) on a host with both toolchains | *HOST* |
+  stages 4–5 report PASS, not BLOCKED; ledger updated
+| A7 | Ground truth: Zephyr painted-stack fixture | *HOST* | measured ≤ certified recorded
+  per ULTRAPLAN §6, or the rung's kill criterion fires
+|===
+
+== 4. Tranche B — receipts and interfaces
+
+[cols="1,2,1,3",options="header"]
+|===
+| ID | Task | Route | Acceptance
+
+| B1 | Refresh stale state files against their own receipts (residual-evidence, tropical,
+  absolute-zero) | *AGENT* | no state file contradicts a PROOF-STATUS line
+| B2 | Comparisons 2.0 in residual-evidence-types: do composition and revision transport
+  beyond `Echo.Echo` / `SoundWarrant`? | *AGENT*→*CI* | a checked yes or no — *"a richer
+  interface is needed"* is a result, not a failure
+| B3 | *Cost-vs-state separation*: a composition where the HWM grade and the cost grade
+  cannot be identified | *AGENT* | a witness pair + a no-identification statement, or a
+  documented collision that narrows occupancy's thesis
+| B4 | Register occupancy-types in the hub's type map (hub#118) | *AGENT* | map row with
+  question, boundary and the cost/state vocabulary fence
+| B5 | Build `verification/proofs` in CI (hub#57) | *AGENT* | XP-1 green in CI, not just on
+  a laptop
+| B6 | Reconcile the choreographic "echo loss-grade" vocabulary with the shared glossary | *AGENT* | README/glossary agreement
+|===
+
+== 5. Tranche C — rungs and keystones (research, time-boxed)
+
+[cols="1,2,1,3",options="header"]
+|===
+| ID | Task | Route | Kill / honest outcome
+
+| C1 | Two-event K-CUT-LOSS square under `Independent₂` | *AGENT* | if `Independent₂` needs
+  hypotheses that trivialise the square, record that as the finding
+| C2 | A second, non-degenerate projection pattern | *AGENT* | if degeneracy is essential
+  rather than incidental, the assembly hypothesis narrows explicitly
+| C3 | R2 static pools + affine/linear handles, T1 coherence | *HOST* | **project gate**:
+  no external consumer and no theorem beyond restatement ⇒ archive with a ledger entry
+| C4 | Bachmann–Howard `ψ₀(Ω_ω)` | *AGENT* | remains OPEN by D-2026-06-14; the two Fidelity
+  postulates are the only ones in the tree and stay quarantined
+| C5 | OND-6 conditional composition | *AGENT* | a too-clean positive result is the warning
+  sign (absolute-zero ROADMAP); treat with suspicion
+|===
+
+== 6. Tranche D — external standing
+
+[cols="1,2,1,3",options="header"]
+|===
+| ID | Task | Route | Acceptance
+
+| D1 | Sign and re-anchor the per-repo AFFIRMATIONs at main (hub#69) | *OWNER*+*AGENT* |
+  dated, GPG-signed, SHA-pinned receipts
+| D2 | Pillar E offline half (packaging, DOI, submission) | *OWNER* | submitted
+| D3 | absolute-zero artifact-evaluation container | *AGENT* | reviewer reproduces
+  `ALL-PROVERS-GREEN` with one command
+| D4 | Follower notes — send | *OWNER* | *gated on Tranche A closed* (§1)
+| D5 | Public write-up: "what a projection/receipt/bound problem looks like, four worked
+  examples" | *AGENT* | citable artefact; reaches the same audience without 269 messages
+|===
+
+== 7. What I need from you
+
+Short, explicit, and each one is a decision or a credential — nothing else:
+
+. *The Actions posture for this repository* (A1). It is owner-only. Either run the PUT
+  with the canon payload, or tell me what Settings → Actions shows and I will prepare the
+  exact command and the positive control.
+. *Scope of my hands* (all tranches). This session can only push
+  `arena/01a1087c-occupancy-types` on this repository. For the other repos I can produce
+  ready-to-apply patches, or issue bodies, or nothing — your call which.
+. *Priority* (next session). Which tranche leads: A (close the house), B (receipts and
+  interfaces), C (rungs and keystones), or D (standing)?
+. *Toolchain route* (A3/A4/A6). CI (needs A1 first), your machine
+  (`bash tests/run_stackcert.sh`, then paste the `#print axioms` line), or the
+  devcontainer in this repo — all three are fine; they just need picking.
+
+Answers to these unblock every row above; nothing else in the plan is waiting on you.
+
+== 8. Stop rules
+
+* *A rung that cannot run is BLOCKED, never OK.* `scripts/check.sh` already enforces this
+  (fixture request, exit 2 semantics); do not "fix" a blocked stage by softening it.
+* *Kill criteria fire on schedule.* R2's project gate (occupancy ULTRAPLAN §1.3/§4) is a
+  real stop, not a milestone: no external consumer + no theorem beyond restatement ⇒
+  archive with a ledger entry.
+* *No capability claim without a separation* (echo-types' gate discipline).
+* *Outreach waits.* See §1.
+
+== 9. Decision-log additions
+
+[cols="2,2,3",options="header"]
+|===
+| Decision | Choice | Why / revisit
+
+| Where toolchain-dependent rungs run | *CI*, not the authoring sandbox | Release-asset hosts are unreachable from the sandbox (measured 2026-10-04); runners can fetch them. Revisit if a local toolchain appears.
+| Workflow style for new jobs | `actions/checkout` only; toolchains installed in `run:` steps | The allow-list posture can kill any third-party action at startup with `jobs=0` (issue #6). Revisit when the posture is fixed.
+| Recon documents | AsciiDoc under `docs/`; follower drafts outside the public repo | Estate markdown rule; unsent drafts about named people are not publishable material.
+| Outreach gating | Tranche A closed first | Credibility: advice about verification from a repo that cannot verify is self-defeating.
+| stackcert build definition | `lakefile.toml` + pinned `lean-toolchain` committed | The harness's `lake build` / `lake exe` steps require them; without them the rung was permanently unpassable.
+|===

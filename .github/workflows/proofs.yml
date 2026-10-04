@@ -1,0 +1,97 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+#
+# proofs.yml — the R0-B / R1 proof rungs that cannot run in the authoring
+# environment.
+#
+# WHY THIS WORKFLOW EXISTS: both rungs were recorded BLOCKED in
+# docs/retraction-ledger.adoc because the authoring machine has no `idris2`
+# and no `lean`/`lake`, and cannot fetch toolchain binaries (release-asset
+# hosts unreachable).  GitHub runners *can* fetch them, so the rungs are
+# verified here rather than reported as proved by nobody.
+#
+#   stackcert — Lean 4, toolchain pinned by src/stackcert/lean-toolchain.
+#               `bash tests/run_stackcert.sh` = core `#print axioms cert_sound`
+#               + `lake build` + positive fixture + four negative controls.
+#   occ-idris — Idris 2 v0.7.0 built from source over Chez Scheme.
+#               `bash src/occ/check-rejections.sh` = the accepts compile and
+#               the four expected-rejection controls are rejected.
+#
+# NO THIRD-PARTY ACTIONS by design: only actions/checkout (GitHub-owned),
+# because this repository's Actions allow-list posture is under investigation
+# (issue #6) and a step referencing a non-allow-listed action dies at startup
+# with jobs=0 — a gate that cannot start must not be trusted to say "green".
+name: Proofs (R0-B Occ, R1 stackcert)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/stackcert/**'
+      - 'src/occ/**'
+      - 'tests/run_stackcert.sh'
+      - '.github/workflows/proofs.yml'
+  pull_request:
+    paths:
+      - 'src/stackcert/**'
+      - 'src/occ/**'
+      - 'tests/run_stackcert.sh'
+      - '.github/workflows/proofs.yml'
+
+# Estate guardrail: cancel superseded runs on the same ref.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  stackcert:
+    name: R1 stackcert (Lean 4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Install elan (toolchain resolves from src/stackcert/lean-toolchain)
+        run: |
+          set -euo pipefail
+          curl -sSfL https://elan.lean-lang.org/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Run the stackcert harness (core + build + fixture + 4 controls)
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          bash tests/run_stackcert.sh
+
+  occ-idris:
+    name: R0-B Occ spike (Idris 2, advisory)
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    # Advisory until the first green run: this rung has never executed
+    # anywhere, so a red result is information (bad toolchain assumptions,
+    # or a real error in the spike) rather than a regression to block on.
+    # Remove this flag once the job has passed on main — see
+    # docs/retraction-ledger.adoc §Blocked.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Install Chez Scheme (Idris 2 backend)
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq chezscheme build-essential
+      - name: Build Idris 2 v0.7.0 from source
+        run: |
+          set -euo pipefail
+          git clone --depth 1 --branch v0.7.0 https://github.com/idris-lang/Idris2.git "$RUNNER_TEMP/Idris2"
+          make -C "$RUNNER_TEMP/Idris2" bootstrap SCHEME=chezscheme
+          make -C "$RUNNER_TEMP/Idris2" install PREFIX="$HOME/.idris2"
+          echo "$HOME/.idris2/bin" >> "$GITHUB_PATH"
+      - name: Occ spike — accepts compile, four controls rejected
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.idris2/bin:$PATH"
+          idris2 --version
+          bash src/occ/check-rejections.sh

@@ -1,0 +1,80 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+#
+# session-ir.yml — CI lane for the R0-B Session IR rung (ULTRAPLAN Phase 1).
+#
+# WHY THIS WORKFLOW EXISTS: the Session IR checker is the estate's only
+# fully-green, fully-runnable rung — `bash scripts/check.sh` passes 14/14
+# locally — and it was the ONLY rung with no CI lane at all. That combination
+# is the worst of both worlds: a result that is genuinely reproducible is
+# attested by nothing a reader can click, and the repository's most credible
+# claim is the one with no receipt.
+#
+# The module is pure standard library (json, sys, typing, dataclasses — no
+# third-party imports), so it runs on any runner's system python3. That is
+# deliberate: fewer moving parts, and no toolchain to fetch.
+#
+# The lane runs the SAME command as `scripts/check.sh` stage 1, including the
+# kill-test audit and the repo-shape gates, which are the other two stages
+# that can execute without a prover. Proof stages (Idris, Lean) are out of
+# scope here — see .github/workflows/proofs.yml.
+name: Session IR (R0-B)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/session_ir/**'
+      - 'examples/session_ir/**'
+      - 'scripts/check*.sh'
+      - 'docs/OPERATIONAL-MODEL.md'
+      - '.github/workflows/session-ir.yml'
+  pull_request:
+    paths:
+      - 'src/session_ir/**'
+      - 'examples/session_ir/**'
+      - 'scripts/check*.sh'
+      - 'docs/OPERATIONAL-MODEL.md'
+      - '.github/workflows/session-ir.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  session-ir:
+    name: R0-B Session IR (checker + kill-test + repo shape)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+
+      - name: Session IR checker on the 14 pinned fixtures
+        # 7 accepts (judgment, measured steps <= grade, peak live bytes) and
+        # 7 rejects (each pinning its exact error code). A reject fixture that
+        # starts being ACCEPTED is a regression, not a tolerance question.
+        run: |
+          set -euo pipefail
+          PYTHONPATH=src python3 -m session_ir test examples/session_ir/manifest.json
+
+      - name: Repo shape gates and kill-test audit
+        # The runnable slice of scripts/check.sh: root allowlist, docs .md
+        # policy, and the Phase 0 kill-test block (four sentences, banned word
+        # absent). Proof stages are excluded by design (see proofs.yml).
+        run: |
+          set -euo pipefail
+          bash scripts/check-root-shape.sh .
+          bash scripts/check-no-md-in-docs.sh .
+          bash scripts/check.sh --runnable-only 2>&1 | grep -E '^(PASS|FAIL|BLOCKED)' || true
+          # --runnable-only exits 0 with proofs BLOCKED; assert the three
+          # runnable stages actually PASSED, and that nothing FAILed.
+          out="$(bash scripts/check.sh --runnable-only 2>&1)"
+          echo "$out"
+          echo "$out" | grep -q '^FAIL' && exit 1
+          echo "$out" | grep -q 'PASS: session-ir examples' || exit 1
+          echo "$out" | grep -q 'PASS: kill-test audit' || exit 1
+          echo "$out" | grep -q 'PASS: root allowlist' || exit 1
