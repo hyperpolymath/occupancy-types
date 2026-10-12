@@ -4,7 +4,7 @@
 # FILL IN the commit once hyperpolymath/resource-algebra is pushed.
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
-RESOURCE_ALGEBRA_COMMIT="${RESOURCE_ALGEBRA_COMMIT:-db33bf35d27236b49a269d8ac4aa1b00a05d4da9}"
+RESOURCE_ALGEBRA_COMMIT="${RESOURCE_ALGEBRA_COMMIT:-b2c9f1f6bc7ed7cc83c7573014cdf88d49d2a881}"
 mkdir -p _build/dependencies
 fi
 if [ ! -d _build/dependencies/resource-algebra ]; then
