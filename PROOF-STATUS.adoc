@@ -1,0 +1,55 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+= occupancy-types — Proof Status
+:revdate: 2026-10-12
+
+Statuses: PROVEN / TESTED / ASSUMED / DESIGNED / OPEN. All modules are
+`--safe --without-K --no-libraries`, `--double-check`, no postulates.
+Sibling: resource-algebra (same kernel), pinned in `scripts/fetch-siblings.sh`.
+
+== The occupancy algebra
+
+[cols="1,3,1",options="header"]
+|===
+| ID | Claim | Status
+| O-1 | The high-water-mark algebra (peak, drift, drift ≤ peak; sequence = `max (peak a) (drift a + peak b)`) is a resource algebra and a dioid; it has no annihilating zero | PROVEN in resource-algebra (`Instances/HWM.agda`); this repo adopts it as its occupancy algebra
+| O-2 | It is this repo's own R2–R3 definition | DESIGNED — adopted today from the resource-algebra proposal; the operational model's "live bytes" reading is its intended semantics; a signed drift (terms that consume more than they allocate) is the first extension
+|===
+
+== Reclamation at a cut (Reclaim.agda)
+
+[cols="1,3,1",options="header"]
+|===
+| ID | Claim | Status
+| R-1 | Cutting a linear protocol anywhere factors its grade, in any resource algebra (`Timeline.cut-factor`) | PROVEN
+| R-2 | *Reclamation law*: the suffix after a cut starts from the prefix's drift, not its peak; `peak − drift` is reclaimed at the frontier (`reclaim-law`, `occupancy-at-cut`) | PROVEN
+| R-3 | *Occupancy ≤ cost*: `peak (xs ++ ys) ≤ peak xs + peak ys` | PROVEN (`occupancy≤cost`, `protocol-occupancy≤cost`)
+| R-4 | Equality iff nothing is reclaimed: with drift = peak the occupancy is the cost (`no-reclaim`); with drift < peak and a non-trivial suffix it is strictly less (`reclaimed`) | PROVEN
+| R-5 | Two readings of one protocol: occupancy 4, cost 7 (`Witness`) | TESTED
+| R-6 | Reading occupancy as cost, or drift as peak, is refused (`CostIsOccupancy`, `DriftIsPeak`) | TESTED
+|===
+
+== Separation from siblings (criterion 2 of the family bar)
+
+Tropical types cannot state any line of Reclaim.agda: in a cost algebra the
+grade of a sequence is the sum, so there is no slack to reclaim. The
+separation is computed (R-5, and resource-algebra S-1) and proved in
+general (R-3/R-4). Together with the order-sensitivity of independent
+threads (choreographic-types A-3), occupancy has two theorems of its own.
+
+== Housekeeping done with this commit
+
+* `scripts/check-agda.sh` is the Agda gate (the template's `check-proofs.sh` is untouched).
+* README title `{{PROJECT_NAME}}` replaced.
+* `src/session_ir` (Python) left in place: it is the working v0 stepper and
+  deleting it unreplaced breaks the repo. The estate's no-Python constraint
+  is recorded as DECISION-001 with a recommendation (port the stepper to
+  the Idris2 ABI layer, where the ruling puts runtime code), not acted on.
+
+== Open
+
+* Signed drift; n-ary live-state (per-buffer) occupancy; the operational
+  stepper's counted bytes shown to be bounded by the typed peak (the v0 →
+  typed bridge).
+* TYPE-CONNECTIONS registration (rows supplied in resource-algebra's
+  cross-repo notes).
+* CI: DESIGNED until first green run on the pinned prover.

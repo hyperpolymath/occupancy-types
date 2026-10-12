@@ -1,0 +1,17 @@
+= DECISION-001 — The Python v0 stepper vs the estate's no-Python constraint
+:revdate: 2026-10-12
+
+*Finding.* `src/session_ir/` (7 Python files) implements the v0 operational
+stepper the README quick-start runs (`python3 -m session_ir`). The estate
+constraint excludes Python; the 2026-10-12 kernel ruling puts runtime code
+in Idris2.
+
+*Not done.* Deleting it: no replacement exists and the README depends on it.
+
+*Recommendation.* Port the stepper to Idris2 under `src/idris/` (the ABI
+layer the ruling names), keeping `docs/OPERATIONAL-MODEL.md` as the spec and
+the counted-bytes reading as the thing `Reclaim.agda` must bound. Until
+then, mark `session_ir` as a sanctioned prototype in README so the
+constraint is visibly waived rather than silently broken.
+
+*Owner ruling needed:* port, waive, or delete.
