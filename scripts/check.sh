@@ -25,8 +25,14 @@ MODE="${1:-all}"
 fail=0
 blocked=0
 
+# Print the message arguments as one line on standard output.
 note() { printf '%s\n' "$*"; }
+
+# Print a successful stage's message on standard output with a PASS prefix.
 ok()   { printf 'PASS: %s\n' "$*"; }
+
+# Print a failed stage's message on standard error and set the global fail flag.
+# Subsequent stages still run; the final gate reads this flag to exit with status 1.
 bad()  { printf 'FAIL: %s\n' "$*" >&2; fail=1; }
 
 note "=== 1. Session IR checker on fixtures ==="
