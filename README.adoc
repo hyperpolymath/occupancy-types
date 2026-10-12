@@ -56,7 +56,7 @@ link:https://github.com/hyperpolymath/nextgen-typing/blob/main/docs/TYPE-CONNECT
 * *Not this repo* — echo indices, warrants, residue measures (shared glossary
   in TYPE-CONNECTIONS separates all of these from resource grades).
 
-Quick start (Python 3, stdlib only):
+Quick start (Julia 1.10, standard library only):
 
 [source,bash]
 ----

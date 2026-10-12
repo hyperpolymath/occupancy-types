@@ -140,7 +140,7 @@ test *args:
     # Project test command (wired at mint per this recipe's instructions):
     # the Session IR example suite — accepts, expected-rejection controls and
     # expected bounds, with the stepper asserting steps <= certified grade.
-    julia --project=src/julia src/julia/bin/sessionir.jl test examples/session_ir/manifest.json {{args}}
+    julia --project=src/julia src/julia/bin/sessionir.jl test examples/session_ir/manifest.json
 
 # The ULTRAPLAN §5 gate: proofs + tests + expected-rejection controls +
 # checker on fixtures.  Missing toolchains fail loudly with fixture requests

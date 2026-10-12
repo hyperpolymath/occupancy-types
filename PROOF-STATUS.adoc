@@ -24,8 +24,8 @@ Sibling: resource-algebra (same kernel), pinned in `scripts/fetch-siblings.sh`.
 | R-2 | *Reclamation law*: the suffix after a cut starts from the prefix's drift, not its peak; `peak − drift` is reclaimed at the frontier (`reclaim-law`, `occupancy-at-cut`) | PROVEN
 | R-3 | *Occupancy ≤ cost*: `peak (xs ++ ys) ≤ peak xs + peak ys` | PROVEN (`occupancy≤cost`, `protocol-occupancy≤cost`)
 | R-4 | Equality iff nothing is reclaimed: with drift = peak the occupancy is the cost (`no-reclaim`); with drift < peak and a non-trivial suffix it is strictly less (`reclaimed`) | PROVEN
-| R-5 | Two readings of one protocol: occupancy 4, cost 7 (`Witness`) | TESTED
-| R-6 | Reading occupancy as cost, or drift as peak, is refused (`CostIsOccupancy`, `DriftIsPeak`) | TESTED
+| R-5 | Two readings of one protocol: occupancy 4, cost 7 (`Witness`) | PROVEN
+| R-6 | Reading occupancy as cost, or drift as peak, is refused (`CostIsOccupancy`, `DriftIsPeak`) | PROVEN
 |===
 
 == Separation from siblings (criterion 2 of the family bar)
