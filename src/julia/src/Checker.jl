@@ -15,12 +15,21 @@ mutable struct Checker
 end
 Checker() = Checker(Dict{String,String}())
 
+"""
+Return a copy of `ctx` binding `x` to `t`, clearing its consumption history in `ck`.
+Throw `SIRError(E_ALIAS, ...)` if `x` already names a live linear value.
+"""
 function bind!(ck::Checker, ctx::Ctx, x::String, t::Ty, pos)
     haskey(ctx, x) && is_linear(ctx[x]) && throw(SIRError(E_ALIAS, "binder '$x' shadows a live linear name", pos))
     delete!(ck.graveyard, x)
     out = copy(ctx); out[x] = t; out
 end
 
+"""
+Throw a `SIRError` for a missing name using its consumption history: `E_UNKNOWN`,
+`E_ALIAS` or `E_USE_AFTER_DROP`. When `dropping` is true, an already dropped name
+instead produces `E_DOUBLE_FREE`.
+"""
 function fail_consumed(ck::Checker, x::String, pos, dropping::Bool)
     reason = get(ck.graveyard, x, nothing)
     reason === nothing && throw(SIRError(E_UNKNOWN, "unbound name '$x'", pos))
@@ -30,6 +39,11 @@ function fail_consumed(ck::Checker, x::String, pos, dropping::Bool)
     throw(SIRError(E_ALIAS, "linear name '$x' already consumed at an earlier occurrence (aliasing)", pos))
 end
 
+"""
+Return the named type and a copy of the context, removing linear names from that
+copy and recording their use in `ck`. Missing names raise the `SIRError` selected
+by `fail_consumed`.
+"""
 function use!(ck::Checker, ctx::Ctx, x::String, pos)
     if haskey(ctx, x)
         t = ctx[x]; out = copy(ctx)
@@ -39,6 +53,11 @@ function use!(ck::Checker, ctx::Ctx, x::String, pos)
     fail_consumed(ck, x, pos, false)
 end
 
+"""
+Return the named session type and the original context without consuming the name.
+Throw `SIRError(E_PROTOCOL, ...)` for a non-endpoint, or propagate the missing-name
+error from `fail_consumed`.
+"""
 function use_ep(ck::Checker, ctx::Ctx, x::String, pos)
     if haskey(ctx, x)
         t = ctx[x]
@@ -48,12 +67,21 @@ function use_ep(ck::Checker, ctx::Ctx, x::String, pos)
     fail_consumed(ck, x, pos, false)
 end
 
+"""Return a copy of `ctx` without `x`, recording `reason` in `ck` for later use errors."""
 function consume_ep!(ck::Checker, ctx::Ctx, x::String, reason::String)
     out = copy(ctx); delete!(out, x); ck.graveyard[x] = reason; out
 end
 
 linear_part(c::Ctx) = Ctx(n => t for (n, t) in c if is_linear(t))
 
+"""
+Return `(type, communication_grade, remaining_context)` for a term, updating
+`ck`'s consumption history without mutating `ctx`. Sequential grades add; a case
+uses the maximum branch grade plus one. Send, receive, select and case each cost
+one communication step. Throw `SIRError` for invalid ownership, protocol use,
+branch agreement, type annotations or exceeded grade bounds. The caller must
+check for an unconsumed linear result or remaining linear bindings.
+"""
 function check(ck::Checker, ctx::Ctx, e::Term)
     if e isa Var
         t, out = use!(ck, ctx, e.name, e.pos); return t, MaxPlus.zero, out
@@ -154,6 +182,15 @@ function check(ck::Checker, ctx::Ctx, e::Term)
     error("unreachable term $(e)")
 end
 
+"""
+    check_program(e::Term)
+
+Check a term from an empty context and return a `CheckResult` containing its type
+and computed communication grade. Grade bounds on let bindings may equal or
+exceed the computed grade; they do not replace it. Propagate checking `SIRError`s
+and throw `SIRError(E_LEAK, ...)` for a linear result or remaining linear bindings.
+This check does not execute the term or establish freedom from runtime deadlock.
+"""
 function check_program(e::Term)
     ck = Checker()
     t, r, out = check(ck, Ctx(), e)

@@ -7,6 +7,11 @@ fmt2(x) = (s = string(round(x; digits=2)); occursin('.', s) ? (length(split(s, '
 
 errline(err::SIRError) = "ERR $(err.code): $(err.msg)" * (err.pos === nothing ? "" : " (at $(err.pos[1]):$(err.pos[2]))")
 
+"""
+Read and check a Session IR file, printing its type and communication grade to
+stdout and returning 0. Print `SIRError` diagnostics to stdout and return 1;
+other errors, including file I/O and integer parsing errors, propagate.
+"""
 function cmd_check(path::String)
     try
         res = check_program(parse_sir(read(path, String)))
@@ -16,6 +21,13 @@ function cmd_check(path::String)
     end
 end
 
+"""
+Read, check and execute a Session IR file, printing its grade and measured statistics
+to stdout. With `trace=true`, also print the execution trace after a completed run.
+Return 0 when measured communication steps do not exceed the grade, or 1 when they
+do or a `SIRError` is printed. Other errors, including file I/O and integer parsing
+errors, propagate.
+"""
 function cmd_run(path::String; trace::Bool=false)
     res = nothing; stats = nothing
     try
@@ -32,6 +44,13 @@ function cmd_run(path::String; trace::Bool=false)
 end
 
 # Minimal JSON for the manifest: objects, arrays, strings, integers, true/false/null.
+"""
+Read the first value in the manifest's JSON subset: objects, arrays, strings,
+machine-sized integers, booleans and null (mapped to `nothing`). Decode newline
+and tab escapes; other escaped characters are copied literally. Literal spellings
+and trailing input are not validated. Malformed input may raise `BoundsError`,
+`ErrorException` or integer parsing errors, which propagate to the caller.
+"""
 function json_parse(s::AbstractString)
     cs = collect(s); i = Ref(1)
     ws!() = (while i[] <= length(cs) && isspace(cs[i[]]); i[] += 1 end)
@@ -124,6 +143,15 @@ function cmd_test(manifest_path::String)
     return failures == 0 ? 0 : 1
 end
 
+"""
+    main(args::Vector{String}=ARGS)
+
+Dispatch `check FILE`, `run FILE [--trace]` or `test MANIFEST` and return the command's
+status (0 for success, 1 for a reported failure), without exiting the process.
+For `run`, a third argument enables tracing only when it equals `--trace`; other
+third arguments are ignored. Unrecognised commands or argument counts print usage
+to stderr and return 2. Errors not handled by the selected command propagate.
+"""
 function main(args::Vector{String}=ARGS)
     if length(args) == 2 && args[1] == "check"; return cmd_check(args[2]) end
     if length(args) in (2, 3) && args[1] == "run"; return cmd_run(args[2]; trace=(length(args) == 3 && args[3] == "--trace")) end

@@ -10,7 +10,9 @@ const zero = 0
 const one  = 1
 op_add(x::Int, y::Int) = x >= y ? x : y
 op_mul(x::Int, y::Int) = x + y
+"""Return the maximum grade in `xs`, with a minimum result of zero, including for empty input."""
 op_sum(xs) = foldl(op_add, xs; init=zero)
+"""Return the sum of sequential communication grades, or zero for empty input."""
 op_seq(xs) = foldl(op_mul, xs; init=zero)
 end
 
@@ -51,17 +53,20 @@ for T in (:BufT, :PairT, :SessT, :Send, :Recv, :IntChoice, :ExtChoice)
     @eval Base.hash(a::$T, h::UInt) = foldl((h, f) -> hash(getfield(a, f), h), fieldnames($T); init=hash($T, h))
 end
 
+"""Return whether a type requires linear use; a pair is linear if either component is linear."""
 is_linear(::UnitT) = false
 is_linear(::BufT)  = true
 is_linear(::SessT) = true
 is_linear(t::PairT) = is_linear(t.a) || is_linear(t.b)
 
+"""Swap sending with receiving and internal with external choice recursively, preserving message types."""
 dual(::End) = End()
 dual(s::Send) = Recv(s.msg, dual(s.cont))
 dual(s::Recv) = Send(s.msg, dual(s.cont))
 dual(s::IntChoice) = ExtChoice([(l, dual(c)) for (l, c) in s.branches])
 dual(s::ExtChoice) = IntChoice([(l, dual(c)) for (l, c) in s.branches])
 
+"""Return a display string for a value type, using session notation for endpoints."""
 pp_ty(::UnitT) = "Unit"
 pp_ty(t::BufT) = "Buf $(t.n)"
 function pp_ty(t::PairT)
@@ -70,6 +75,7 @@ function pp_ty(t::PairT)
     "$left * $(pp_ty(t.b))"
 end
 pp_ty(t::SessT) = pp_sess(t.s)
+"""Return a display string for a session protocol, preserving the order of choice branches."""
 pp_sess(::End) = "End"
 pp_sess(s::Send) = "!$(pp_ty(s.msg)).$(pp_sess(s.cont))"
 pp_sess(s::Recv) = "?$(pp_ty(s.msg)).$(pp_sess(s.cont))"

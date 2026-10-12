@@ -27,6 +27,12 @@ function comment!(L::Lexer, line, col)
         bump!(L)
     end
 end
+"""
+Consume the remaining source and return tokens with one-based line and character
+column positions, ending with an EOF token. Skip whitespace and non-nested
+`(* ... *)` comments; a NUL character also ends input. Throw `SIRError(E_SYNTAX, ...)`
+for an unexpected character or unterminated comment.
+"""
 function tokens(L::Lexer)
     out = Tok[]
     while true
@@ -63,6 +69,10 @@ Parser(src::AbstractString) = Parser(tokens(Lexer(src)), 1)
 tok(P::Parser) = P.toks[P.p]
 pos(P::Parser) = (tok(P)[3], tok(P)[4])
 at(P::Parser, kind, text=nothing) = (t = tok(P); t[1] == kind && (text === nothing || t[2] == text))
+"""
+Return and consume the current token if its kind and optional text match.
+Throw `SIRError(E_SYNTAX, ...)` without advancing on a mismatch.
+"""
 function eat!(P::Parser, kind, text=nothing)
     if !at(P, kind, text)
         t = tok(P); want = text === nothing ? kind : text; got = t[2] == "" ? t[1] : t[2]
@@ -72,6 +82,11 @@ function eat!(P::Parser, kind, text=nothing)
 end
 parse_program(P::Parser) = (e = parse_term(P); eat!(P, "EOF"); e)
 
+"""
+Consume a type, grouping successive products to the left, and return its type node.
+Syntax errors propagate as `SIRError(E_SYNTAX, ...)`; integer parsing errors for
+buffer sizes also propagate.
+"""
 function parse_type(P::Parser)
     t = parse_type_atom(P)
     while at(P, "SYM", "*"); eat!(P, "SYM", "*"); t = PairT(t, parse_type_atom(P)) end
@@ -166,4 +181,13 @@ function parse_term(P::Parser)
     end
     throw(SIRError(E_SYNTAX, "expected a term, found '$(tk[2] == "" ? tk[1] : tk[2])'", ps))
 end
+"""
+    parse_sir(src::AbstractString)
+
+Parse Session IR source into a term with one-based source positions. Require an
+EOF token after the term; lexing treats NUL as end of input. Throw
+`SIRError(E_SYNTAX, ...)` for lexical or grammatical errors. Integer parsing errors
+for sizes and grade bounds propagate unchanged. Type and ownership checks are
+performed separately by `check_program`.
+"""
 parse_sir(src::AbstractString) = parse_program(Parser(src))

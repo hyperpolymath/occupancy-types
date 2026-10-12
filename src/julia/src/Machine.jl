@@ -25,6 +25,7 @@ mutable struct Machine
     stats::RunStats; next_bid::Int; next_cid::Int; chans::Vector{Chan}
 end
 Machine() = Machine(RunStats(), 0, 0, Chan[])
+"""Count queued message and selection events across all channels, or zero if none exist."""
 inflight(m::Machine) = sum((length(q) for c in m.chans for q in values(c.queues)); init=0)
 touch_inflight!(m::Machine) = (m.stats.peak_inflight = max(m.stats.peak_inflight, inflight(m)))
 function getep(env, name, pos)
@@ -32,12 +33,26 @@ function getep(env, name, pos)
     v isa EpVal || throw(SIRError(R_INTERNAL, "'$name' is not an endpoint at runtime", pos))
     v
 end
+"""
+Evaluate `e` from an empty environment, retaining and updating `m`'s existing
+channels and statistics, and return the value. Propagate evaluation errors and
+throw `SIRError(R_CLOSE_PENDING, ...)` if any channel events remain afterwards.
+No type check or state rollback is performed.
+"""
 function run!(m::Machine, e::Term)
     v = eval_term(m, e, Dict{String,Any}())
     pending = inflight(m)
     pending > 0 && throw(SIRError(R_CLOSE_PENDING, "$pending channel event(s) still queued at end of program", e.pos))
     v
 end
+"""
+Evaluate a term in `env`, returning its value and updating machine statistics,
+channels and referenced buffers. Unit-valued operations return `nothing`.
+Throw `SIRError` for an empty receive/case queue (`R_DEADLOCK`), closing with queued
+events (`R_CLOSE_PENDING`), or invalid runtime values/protocol events (`R_INTERNAL`).
+An unbound variable raises `KeyError`. Errors retain any mutations already made;
+callers are expected to type-check the term first.
+"""
 function eval_term(m::Machine, e::Term, env::Dict{String,Any})
     st = m.stats
     if e isa Var; return env[e.name]
@@ -98,6 +113,19 @@ function eval_term(m::Machine, e::Term, env::Dict{String,Any})
     end
     error("unreachable term $(e)")
 end
+"""
+    run_program(e::Term)
+
+Execute a term on a fresh machine and return its `RunStats`, discarding the value.
+`comm_steps` counts sends, receives, selections and cases; `peak_live` and
+`live_bytes` measure simulated buffer bytes; `peak_inflight` counts queued message
+and selection events. `trace` contains the execution trace.
+
+Call `check_program` first when static validation is required: this function does
+not type-check or compare measured steps with a grade. Evaluation errors propagate,
+including `SIRError` for deadlock, pending events or invalid runtime operations,
+and `KeyError` for an unbound variable.
+"""
 function run_program(e::Term)
     m = Machine(); run!(m, e); m.stats
 end
