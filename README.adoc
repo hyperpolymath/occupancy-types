@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 // SPDX-FileCopyrightText: 2024-2026 Jonathan D.A. Jewell (hyperpolymath)
-= {{PROJECT_NAME}}
+= occupancy-types — live-state occupancy as a graded type discipline
 :toc:
 :toc-placement: preamble
 
@@ -56,12 +56,12 @@ link:https://github.com/hyperpolymath/nextgen-typing/blob/main/docs/TYPE-CONNECT
 * *Not this repo* — echo indices, warrants, residue measures (shared glossary
   in TYPE-CONNECTIONS separates all of these from resource grades).
 
-Quick start (Python 3, stdlib only):
+Quick start (Julia 1.10, standard library only):
 
 [source,bash]
 ----
-PYTHONPATH=src python3 -m session_ir test examples/session_ir/manifest.json
-PYTHONPATH=src python3 -m session_ir check examples/session_ir/accept_seq_add.sir
+julia --project=src/julia src/julia/bin/sessionir.jl test examples/session_ir/manifest.json
+julia --project=src/julia src/julia/bin/sessionir.jl check examples/session_ir/accept_seq_add.sir
 ----
 
 [IMPORTANT]

@@ -1,0 +1,23 @@
+= DECISION-001 — The v0 stepper: Python removed, ported to Julia
+:revdate: 2026-10-12
+
+*Ruling (owner, 2026-10-12).* Python must go; the scientific language is
+Julia (not JtV).
+
+*Done.* `src/session_ir/` (7 Python files, ~1,090 lines) removed.
+`src/julia/` is the SessionIR package — Syntax, Parser, Checker, Machine,
+CLI, module for module the same structure — Julia 1.10, standard library
+only (a minimal JSON reader replaces `json`). Entry point
+`julia --project=src/julia src/julia/bin/sessionir.jl {check|run|test}`;
+`src/julia/test/runtests.jl` runs the manifest. The kill-test audit that
+was an inline Python block in `scripts/check.sh` is `scripts/kill-test-audit.jl`.
+
+*Verification.* The Python was the oracle, run side by side before
+deletion: 14/14 manifest fixtures reproduce judgment, grade, steps, peak
+live bytes and exact error codes; `check` output identical on every
+fixture; `run --trace` identical line for line on the delegation example.
+
+*Residue.* `julia-actions/setup-julia@v2` is unpinned until `actions.lock`
+carries its SHA — the workflow is DESIGNED until its first green run.
+
+*Template residue noted, not touched:* `tests/e2e/julia_mint_test.sh` (RSR archetype) shells out to `python3` for UUIDv5; that is the template's, and a separate ruling.

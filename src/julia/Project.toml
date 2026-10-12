@@ -1,0 +1,12 @@
+name = "SessionIR"
+uuid = "7b2d1e9c-4f7a-4e3b-9b0e-2b7f0a5b6c11"
+version = "0.1.0"
+
+[compat]
+julia = "1.10"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]

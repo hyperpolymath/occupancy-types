@@ -10,7 +10,7 @@
 [tools]
 # Language runtimes
 node = "latest"
-python = "latest"
+julia = "1.10"
 rust = "latest"
 go = "latest"
 zig = "latest"
@@ -43,7 +43,7 @@ ninja = "latest"
 #   Already provided by a tool that IS listed above:
 #     cargo   -> ships with `rust`
 #     gofmt   -> ships with `go`
-#     pip     -> ships with `python`
+#     (no pip: the stepper is Julia, standard library only)
 #
 #   Project-level dependencies, not system tools. These belong in
 #   package.json / pyproject.toml / mix.exs, not in a toolchain manager:
