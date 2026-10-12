@@ -30,7 +30,7 @@ ok()   { printf 'PASS: %s\n' "$*"; }
 bad()  { printf 'FAIL: %s\n' "$*" >&2; fail=1; }
 
 note "=== 1. Session IR checker on fixtures ==="
-if PYTHONPATH=src python3 -m session_ir test examples/session_ir/manifest.json; then
+if julia --project=src/julia src/julia/bin/sessionir.jl test examples/session_ir/manifest.json; then
   ok "session-ir examples (accept + reject + expected bounds; steps <= grade)"
 else
   bad "session-ir examples"
@@ -38,20 +38,7 @@ fi
 
 note ""
 note "=== 2. Phase 0 kill-test audit ==="
-if python3 - <<'PY'
-import re, sys
-src = open('docs/OPERATIONAL-MODEL.md', encoding='utf-8').read()
-m = re.search(r'<!-- KILL-TEST-BEGIN -->\n(.*?)<!-- KILL-TEST-END -->', src, re.S)
-if not m:
-    sys.exit('KILL-TEST block missing from docs/OPERATIONAL-MODEL.md')
-block = m.group(1).strip()
-if 'tropical' in block.lower():
-    sys.exit('banned word present in kill-test block')
-lines = [l for l in block.splitlines() if l.strip()]
-if not (len(lines) == 4 and all(l.rstrip().endswith('.') for l in lines)):
-    sys.exit(f'kill-test must be exactly 4 sentences, found {len(lines)}')
-print('kill-test: 4 sentences, banned word absent')
-PY
+if julia scripts/kill-test-audit.jl
 then ok "kill-test audit"; else bad "kill-test audit"; fi
 
 note ""

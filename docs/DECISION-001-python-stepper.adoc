@@ -1,17 +1,23 @@
-= DECISION-001 — The Python v0 stepper vs the estate's no-Python constraint
+= DECISION-001 — The v0 stepper: Python removed, ported to Julia
 :revdate: 2026-10-12
 
-*Finding.* `src/session_ir/` (7 Python files) implements the v0 operational
-stepper the README quick-start runs (`python3 -m session_ir`). The estate
-constraint excludes Python; the 2026-10-12 kernel ruling puts runtime code
-in Idris2.
+*Ruling (owner, 2026-10-12).* Python must go; the scientific language is
+Julia (not JtV).
 
-*Not done.* Deleting it: no replacement exists and the README depends on it.
+*Done.* `src/session_ir/` (7 Python files, ~1,090 lines) removed.
+`src/julia/` is the SessionIR package — Syntax, Parser, Checker, Machine,
+CLI, module for module the same structure — Julia 1.10, standard library
+only (a minimal JSON reader replaces `json`). Entry point
+`julia --project=src/julia src/julia/bin/sessionir.jl {check|run|test}`;
+`src/julia/test/runtests.jl` runs the manifest. The kill-test audit that
+was an inline Python block in `scripts/check.sh` is `scripts/kill-test-audit.jl`.
 
-*Recommendation.* Port the stepper to Idris2 under `src/idris/` (the ABI
-layer the ruling names), keeping `docs/OPERATIONAL-MODEL.md` as the spec and
-the counted-bytes reading as the thing `Reclaim.agda` must bound. Until
-then, mark `session_ir` as a sanctioned prototype in README so the
-constraint is visibly waived rather than silently broken.
+*Verification.* The Python was the oracle, run side by side before
+deletion: 14/14 manifest fixtures reproduce judgment, grade, steps, peak
+live bytes and exact error codes; `check` output identical on every
+fixture; `run --trace` identical line for line on the delegation example.
 
-*Owner ruling needed:* port, waive, or delete.
+*Residue.* `julia-actions/setup-julia@v2` is unpinned until `actions.lock`
+carries its SHA — the workflow is DESIGNED until its first green run.
+
+*Template residue noted, not touched:* `tests/e2e/julia_mint_test.sh` (RSR archetype) shells out to `python3` for UUIDv5; that is the template's, and a separate ruling.

@@ -40,10 +40,10 @@ threads (choreographic-types A-3), occupancy has two theorems of its own.
 
 * `scripts/check-agda.sh` is the Agda gate (the template's `check-proofs.sh` is untouched).
 * README title `{{PROJECT_NAME}}` replaced.
-* `src/session_ir` (Python) left in place: it is the working v0 stepper and
-  deleting it unreplaced breaks the repo. The estate's no-Python constraint
-  is recorded as DECISION-001 with a recommendation (port the stepper to
-  the Idris2 ABI layer, where the ruling puts runtime code), not acted on.
+* `src/session_ir` (Python) removed; the v0 stepper is now `src/julia/`
+  (SessionIR, Julia 1.10, standard library only), ported 2026-10-12 and
+  verified against the Python on all 14 pinned fixtures and on
+  `check`/`run --trace` output line for line (DECISION-001, ruled).
 
 == Open
 

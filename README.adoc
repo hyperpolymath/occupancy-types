@@ -60,8 +60,8 @@ Quick start (Python 3, stdlib only):
 
 [source,bash]
 ----
-PYTHONPATH=src python3 -m session_ir test examples/session_ir/manifest.json
-PYTHONPATH=src python3 -m session_ir check examples/session_ir/accept_seq_add.sir
+julia --project=src/julia src/julia/bin/sessionir.jl test examples/session_ir/manifest.json
+julia --project=src/julia src/julia/bin/sessionir.jl check examples/session_ir/accept_seq_add.sir
 ----
 
 [IMPORTANT]

@@ -11,7 +11,7 @@
 # claim is the one with no receipt.
 #
 # The module is pure standard library (json, sys, typing, dataclasses — no
-# third-party imports), so it runs on any runner's system python3. That is
+# third-party imports); Julia 1.10, standard library only. That is
 # deliberate: fewer moving parts, and no toolchain to fetch.
 #
 # The lane runs the SAME command as `scripts/check.sh` stage 1, including the
@@ -25,14 +25,14 @@ on:
   push:
     branches: [main, master]
     paths:
-      - 'src/session_ir/**'
+      - 'src/julia/**'
       - 'examples/session_ir/**'
       - 'scripts/check*.sh'
       - 'docs/OPERATIONAL-MODEL.md'
       - '.github/workflows/session-ir.yml'
   pull_request:
     paths:
-      - 'src/session_ir/**'
+      - 'src/julia/**'
       - 'examples/session_ir/**'
       - 'scripts/check*.sh'
       - 'docs/OPERATIONAL-MODEL.md'
@@ -52,6 +52,9 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v7.0.1
+      - uses: julia-actions/setup-julia@v2   # DESIGNED: pin by SHA in actions.lock before merge
+        with:
+          version: "1.10"
 
       - name: Session IR checker on the 14 pinned fixtures
         # 7 accepts (judgment, measured steps <= grade, peak live bytes) and
@@ -59,7 +62,7 @@ jobs:
         # starts being ACCEPTED is a regression, not a tolerance question.
         run: |
           set -euo pipefail
-          PYTHONPATH=src python3 -m session_ir test examples/session_ir/manifest.json
+          julia --project=src/julia src/julia/bin/sessionir.jl test examples/session_ir/manifest.json
 
       - name: Repo shape gates and kill-test audit
         # The runnable slice of scripts/check.sh: root allowlist, docs .md
