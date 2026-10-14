@@ -7,8 +7,7 @@ export LC_ALL="${LC_ALL:-C.UTF-8}"
 prover="${AGDA:-agda}"
 "$prover" --version
 ra="${RESOURCE_ALGEBRA_SRC:-_build/dependencies/resource-algebra/src}"
-[ -d "$ra" ] || [ -n "${RESOURCE_ALGEBRA_SRC:-}" ] || bash scripts/fetch-siblings.sh
-if [ ! -d "$ra" ] && [ "$ra" = _build/dependencies/resource-algebra/src ]; then
+if [ -z "${RESOURCE_ALGEBRA_SRC:-}" ]; then
   bash scripts/fetch-siblings.sh
 fi
 test -d "$ra" || { echo "ERROR: resource-algebra sources not found at $ra" >&2; exit 1; }

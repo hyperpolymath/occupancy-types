@@ -8,6 +8,15 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
 
 === [Unreleased]
 
+==== Changed
+
+* resource-algebra pin `b2c9f1f` → `0b338c9` (`scripts/fetch-siblings.sh`).
+  That commit adds `≤-+ˡ`, `≤-+ʳ`, `+-monoˡ-≤` and `max-lub` to
+  `ResourceAlgebra.Prelude`, with the same statements as the copies in
+  `OccupancyTypes.Order`. Order opens the Prelude, so the two definitions
+  clashed (`Multiple definitions of ≤-+ˡ`). The local copies are removed;
+  the proofs now use the kernel's.
+
 ==== Added
 
 * `www/` site-operations bundle (issue #53): canonical `.well-known/`

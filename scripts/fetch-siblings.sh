@@ -3,7 +3,7 @@
 # Fetch the compared sibling at its pinned commit (pattern: residual-evidence-types).
 set -euo pipefail
 cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
-RESOURCE_ALGEBRA_COMMIT="${RESOURCE_ALGEBRA_COMMIT:-b2c9f1f6bc7ed7cc83c7573014cdf88d49d2a881}"
+RESOURCE_ALGEBRA_COMMIT="${RESOURCE_ALGEBRA_COMMIT:-0b338c9fc45cd04e7ee7d00b3855cd59d56a2afe}"
 mkdir -p _build/dependencies
 if [ ! -d _build/dependencies/resource-algebra ]; then
   git clone --quiet https://github.com/hyperpolymath/resource-algebra.git _build/dependencies/resource-algebra
