@@ -1,5 +1,10 @@
+# SPDX-License-Identifier: MPL-2.0
+# uuid below is the UUIDv8 mint over the registered domain
+# julia-package-identity (preimage github.com/hyperpolymath/occupancy-types;
+# standards' ADR-008 registry), replacing the hand-assigned v4 literal the
+# strict gate rejects. The superseded literal is in git history.
 name = "SessionIR"
-uuid = "7b2d1e9c-4f7a-4e3b-9b0e-2b7f0a5b6c11"
+uuid = "99c11778-0b89-85a6-ac75-27c4101710bf"
 version = "0.1.0"
 
 [compat]

@@ -27,7 +27,7 @@
 # This value is a recomputable fact about THIS repo and nothing else:
 #     uuidgen --sha1 --namespace @url --name "github.com/hyperpolymath/rsr-template-repo"
 #     -> a5ea1382-a34c-5334-8a46-a2ebe904c810
-uuid = "a5ea1382-a34c-5334-8a46-a2ebe904c810"
+uuid = "311d18e0-650b-885e-b437-59bbe1f6ad3b"
 primary-forge = "github"
 primary-owner = "hyperpolymath"
 canonical-name = "rsr-template-repo"
