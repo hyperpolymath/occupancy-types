@@ -218,9 +218,15 @@ SPDX-License-Identifier: CC-BY-SA-4.0
 
 == Applications in practice
 
-The worked case is a pipeline stage's memory: MetaManifold records each
-stage's resident memory (Julia's allocation total, the sampled RSS of its
-child processes) under a config flag, as raw readings. The session-IR
+The worked case is a pipeline stage's memory, as measured by
+https://github.com/hyperpolymath/MetaManifold-WebUI/blob/7d5e9a4/src/core/memory_probe.jl[MetaManifold's
+memory probe] (pinned on the fork's `main` at 7d5e9a4; the reading at
+https://github.com/hyperpolymath/MetaManifold-WebUI/blob/7d5e9a4/docs/occupancy-2026-10.adoc[docs/occupancy-2026-10.adoc],
+the grades as https://github.com/hyperpolymath/MetaManifold-WebUI/issues/105[issue #105]).
+When the run config sets `occupancy_probe.enabled: true`, the probe records
+two separate raw readings for a stage: Julia's allocation total (a cost:
+it only ever adds up, whatever order the stage's work ran in), and the
+resident memory of each child process, sampled from /proc. The session-IR
 checker turns those readings into a *typed* quantity: the stage's bytes are
 checked against a worst-case bound before the stage runs, so "this stage
 fits in its budget" is a certificate rather than a hope. The practical
