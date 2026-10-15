@@ -226,11 +226,16 @@ the grades as https://github.com/hyperpolymath/MetaManifold-WebUI/issues/105[iss
 When the run config sets `occupancy_probe.enabled: true`, the probe records
 two separate raw readings for a stage: Julia's allocation total (a cost:
 it only ever adds up, whatever order the stage's work ran in), and the
-resident memory of each child process, sampled from /proc. The session-IR
-checker turns those readings into a *typed* quantity: the stage's bytes are
-checked against a worst-case bound before the stage runs, so "this stage
-fits in its budget" is a certificate rather than a hope. The practical
+resident memory of each child process, sampled from /proc. Two checks,
+honestly separated. The session-IR checker certifies its own calculus, not
+these readings: a session's communication steps are typed against a
+worst-case bound before it runs, so "this session fits its step budget" is
+a certificate rather than a hope. The readings are typed after the fact, on
+the measurement side: the grade algebra (the HWM proposal, in
+resource-algebra) turns the recorded numbers into a *typed* quantity whose
+fold is checked against what the run actually occupied. The practical
 value for long-running pipelines on shared machines: the failure mode moves
-from "the run died at 3am on the swap partition" to "the stage was refused
-a budget it provably exceeds", and the reasoning is compositional -- stages
-compose the way their sessions do.
+from "the run died at 3am on the swap partition and the logs cannot say
+what it took" to "what the run occupied is a recorded, typed quantity",
+and the reasoning is compositional -- stages compose the way their
+sessions do.
