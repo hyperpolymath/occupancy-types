@@ -215,3 +215,16 @@ Caveat:
 This project is licensed under the Mozilla Public License, v. 2.0. See the `LICENSE` file for details.
 
 SPDX-License-Identifier: CC-BY-SA-4.0
+
+== Applications in practice
+
+The worked case is a pipeline stage's memory: MetaManifold records each
+stage's resident memory (Julia's allocation total, the sampled RSS of its
+child processes) under a config flag, as raw readings. The session-IR
+checker turns those readings into a *typed* quantity: the stage's bytes are
+checked against a worst-case bound before the stage runs, so "this stage
+fits in its budget" is a certificate rather than a hope. The practical
+value for long-running pipelines on shared machines: the failure mode moves
+from "the run died at 3am on the swap partition" to "the stage was refused
+a budget it provably exceeds", and the reasoning is compositional -- stages
+compose the way their sessions do.
