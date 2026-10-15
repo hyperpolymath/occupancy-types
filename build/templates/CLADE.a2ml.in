@@ -6,19 +6,25 @@
 # The identity below is DERIVED. The clade is NOT — a human must choose it.
 
 [identity]
-# THE UUID IS DERIVED, NOT ALLOCATED, NOT INVENTED. The registry spec
-# (gv-clade-index: docs/SPEC-clade-verisim-portal.adoc §Identity Model):
+# THE UUID IS DERIVED, NOT ALLOCATED, NOT INVENTED. The standards spec
+# (standards: docs/decisions/ADR-008-uuid-v8-estate-standard.adoc, profile C;
+# docs/decisions/ADR-008-profile-c-domains.json):
 #
-#     uuid = UUIDv5(namespace = URL, name = "github.com/<owner>/<name>")
+#     domain = "gv-clade-index", name = "github.com/<owner>/<name>"
+#     uuid = first 16 bytes of SHA-256 over UTF-8(domain + ":" + name),
+#            without a trailing newline, with the version nibble set to 8
+#            and the RFC 9562 variant bits set to binary 10.
 #
 # "The same repo always produces the same UUID without a lookup table." It is a
 # fact anyone can recompute and check — never copy one from another repo, and
-# never make one up. Recompute this one any time with:
+# never make one up. Recompute this one in Bash with sha256sum:
 #
-#     uuidgen --sha1 --namespace @url --name "github.com/{{OWNER}}/{{REPO}}"
-#
-# Verify the method first by reproducing a known worked example:
-#     janus example -> e216170e-ff47-5a5c-bbdd-15e61c8190c8
+#     name="github.com/{{OWNER}}/{{REPO}}"
+#     hash=$(printf '%s' "gv-clade-index:$name" | sha256sum)
+#     hex=${hash:0:32}
+#     variant=$(printf '%x' "$(( (16#${hex:16:1} & 3) | 8 ))")
+#     printf '%s-%s-8%s-%s%s-%s\n' "${hex:0:8}" "${hex:8:4}" \
+#       "${hex:13:3}" "$variant" "${hex:17:3}" "${hex:20:12}"
 #
 # The owner segment is part of the derived name, so it is part of the IDENTITY:
 # the same repo hosted under a different owner has a different uuid. Record the
