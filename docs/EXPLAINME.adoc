@@ -215,3 +215,27 @@ Caveat:
 This project is licensed under the Mozilla Public License, v. 2.0. See the `LICENSE` file for details.
 
 SPDX-License-Identifier: CC-BY-SA-4.0
+
+== Applications in practice
+
+The worked case is a pipeline stage's memory, as measured by
+https://github.com/hyperpolymath/MetaManifold-WebUI/blob/7d5e9a4/src/core/memory_probe.jl[MetaManifold's
+memory probe] (pinned on the fork's `main` at 7d5e9a4; the reading at
+https://github.com/hyperpolymath/MetaManifold-WebUI/blob/7d5e9a4/docs/occupancy-2026-10.adoc[docs/occupancy-2026-10.adoc],
+the grades as https://github.com/hyperpolymath/MetaManifold-WebUI/issues/105[issue #105]).
+When the run config sets `occupancy_probe.enabled: true`, the probe records
+two separate raw readings for a stage: Julia's allocation total (a cost:
+it only ever adds up, whatever order the stage's work ran in), and the
+resident memory of each child process, sampled from /proc. Two checks,
+honestly separated. The session-IR checker certifies its own calculus, not
+these readings: a session's communication steps are typed against a
+worst-case bound before it runs, so "this session fits its step budget" is
+a certificate rather than a hope. The readings are typed after the fact, on
+the measurement side: the grade algebra (the HWM proposal, in
+resource-algebra) turns the recorded numbers into a *typed* quantity whose
+fold is checked against what the run actually occupied. The practical
+value for long-running pipelines on shared machines: the failure mode moves
+from "the run died at 3am on the swap partition and the logs cannot say
+what it took" to "what the run occupied is a recorded, typed quantity",
+and the reasoning is compositional -- stages compose the way their
+sessions do.
