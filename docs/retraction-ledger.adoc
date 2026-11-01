@@ -22,24 +22,33 @@ requested). Blocked ≠ retracted: no claim has been withdrawn.
 | _(none yet)_ | | |
 |===
 
+== Resolved local-toolchain blockers
+
+[cols="1,2,2,1"]
+|===
+| Date resolved | What is verified locally | Receipt | Rung
+
+| 2026-10-05 (blocked 2026-09-27)
+| Idris 2 Occ spike: both accept modules compile and all four controls reject.
+  Hosted CI is still advisory until its first green GitHub Actions run.
+| Idris 2 v0.7.0; `bash src/occ/check-rejections.sh`
+| R0-B Piece 2
+
+| 2026-10-05 (blocked 2026-09-27)
+| Stackcert core has an axiom-free local Lean receipt; Lake build, one positive
+  fixture, and all four negative controls pass. Lean proof-manifest check also
+  passes. Parser/CLI fixtures do not prove general input behavior; no Zephyr
+  measurement or hosted CI receipt is claimed.
+| Lean 4.15.0 / Lake 5.0.0; `bash tests/run_stackcert.sh`;
+  `bash scripts/check-proofs.sh lean4`
+| R1 Piece 3 (proof/tooling)
+|===
+
 == Blocked / fixture requests
 
 [cols="1,2,2,1"]
 |===
 | Date | What is blocked | Exact command(s) to unblock | Rung
-
-| 2026-09-27
-| Idris 2 spike unverified (no `idris2` on PATH in the work environment)
-| `idris2 --check Occ.idr` from `src/occ/`; `./check-rejections.sh` for the
-  four expected-rejection controls (see `src/occ/README.adoc`)
-| R0-B Piece 2
-
-| 2026-09-27
-| stackcert core unverified (no `lean`/`lake` on PATH)
-| `lake build && lake exe stackcert …` from `src/stackcert/`;
-  `lean StackcertCore.lean` then `#print axioms cert_sound` (see
-  `src/stackcert/README.adoc`)
-| R1 Piece 3
 
 | 2026-09-27
 | Zephyr ground-truth fixture absent (no `west`/QEMU/Zephyr SDK; fixture
@@ -58,8 +67,9 @@ Full tables live in the session report (`docs/reports/`); per-rung state:
 | Rung | Kill status | Note
 
 | R0-B Phase 0/1 (Session IR) | not fired | kill-test audited mechanically
-  (`scripts/check.sh`); 14/14 examples green; steps ≤ grade on every run
-| R0-B Piece 2 (Idris spike) | open | kill question answered provisionally in
-  `src/occ/README.adoc`; verdict marked UNVERIFIED until `idris2` runs
-| R1 (stackcert) | open | time box not started; fixture request pending
+  (`scripts/check.sh`); 16/16 examples green; steps ≤ grade on every run
+| R0-B Piece 2 (Idris spike) | not fired | local Idris 2 v0.7.0 harness green;
+  hosted job remains advisory until its first green run
+| R1 (stackcert) | open | core and CLI fixtures pass locally; Zephyr ground-truth
+  request pending, so the time box has not started
 |===

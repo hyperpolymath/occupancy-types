@@ -143,4 +143,11 @@ verification/proofs/coq/*.glob
 verification/proofs/coq/.*.aux
 # Agda compiled proof artifacts
 verification/proofs/agda/*.agdai
+# Lean/Lake build outputs
+.lake/
+
+# Python bytecode (was tracked inadvertently; see docs/recon/TYPE-FAMILY-POSITION-2026-10-04.adoc)
+__pycache__/
+*.py[cod]
+*.pyo
 

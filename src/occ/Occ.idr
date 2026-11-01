@@ -12,8 +12,9 @@
 -- controls live in Reject*.idr beside this file: double free, dropped handle
 -- (leak), alloc over capacity, use-after-free — all fail to typecheck.
 --
--- UNVERIFIED in this work environment (no idris2 on PATH): see README.adoc
--- for exact check commands.  %default total is on; no holes.
+-- Locally checked with Idris 2 v0.7.0; see README.adoc for the receipt.
+-- The hosted workflow remains advisory until its first green CI run.
+-- %default total is on; no holes.
 
 module Occ
 
@@ -59,7 +60,7 @@ data Occ : (pre, post, peak : Nat) -> Type -> Type where
 
   ||| Allocate one cell of a pool of capacity C: allowed exactly when
   ||| S n <= C (static proof; over-capacity has no such term).
-  Alloc : (C : Nat) -> (0 ok : LTE (S n) C) -> Occ n (S n) (S n) Handle
+  Alloc : (capacity : Nat) -> (0 ok : LTE (S n) capacity) -> Occ n (S n) (S n) Handle
 
   ||| Free consumes its handle linearly (multiplicity 1).
   Free : (1 h : Handle) -> Occ (S n) n (S n) Unit
@@ -80,10 +81,10 @@ data Occ : (pre, post, peak : Nat) -> Type -> Type where
 ||| multiplicity 1, so dropping it (0 uses), duplicating it, or freeing twice
 ||| (2 uses) are all type errors.
 public export
-WithAlloc : (C : Nat) -> (0 ok : LTE (S n) C)
+WithAlloc : (capacity : Nat) -> (0 ok : LTE (S n) capacity)
          -> (1 k : (1 h : Handle) -> Occ (S n) post peak b)
          -> Occ n post (max (S n) peak) b
-WithAlloc C ok k = LBind (Alloc C ok) k
+WithAlloc capacity ok k = LBind (Alloc capacity ok) k
 
 ||| Sequence a Unit-producing action with a continuation, consuming the unit.
 public export

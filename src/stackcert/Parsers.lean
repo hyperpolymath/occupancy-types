@@ -3,8 +3,9 @@ SPDX-License-Identifier: MPL-2.0
 SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 
 Parsers — GCC `.su` / `.ci` (VCG from -fcallgraph-info=su) and the
-annotations.toml subset.  UNVERIFIED I/O layer: not covered by cert_sound;
-inputs are treated as untrusted text and every failure mode is an Except.
+annotations.toml subset.  The parser/CLI I/O layer is outside cert_sound; the
+committed fixtures exercise it, but general input behavior is not formally
+verified.  Inputs are treated as untrusted text and failures use Except.
 Formats were captured from real GCC output (see fixtures/).
 -/
 
@@ -113,7 +114,12 @@ def parseListValue (v : String) : Option (List String) :=
   let s := v.trim
   if s.startsWith "[" && s.endsWith "]" then
     let inner := (s.drop 1).dropRight 1
-    some (((inner.splitOn ",").map String.trim).filter (fun x => x ≠ ""))
+    let unquote := fun item : String =>
+      let item := item.trim
+      if item.startsWith "\"" && item.endsWith "\"" then
+        ((item.drop 1).dropRight 1).trim
+      else item
+    some (((inner.splitOn ",").map unquote).filter (fun x => x ≠ ""))
   else none
 
 def parseToml (text : String) :
@@ -130,7 +136,8 @@ def parseToml (text : String) :
         go name acc rest
       else
         match l.splitOn "=" with
-        | k :: v :: _ => go sec ((sec, k.trim, (String.intercalate "=" v).trim) :: acc) rest
+        | k :: v :: more =>
+          go sec ((sec, k.trim, (String.intercalate "=" (v :: more)).trim) :: acc) rest
         | _ => .error s!"bad toml line: {l}"
   go "" [] lines
 
@@ -145,25 +152,25 @@ def annOfToml (rows : List (String × String × String)) : Except String Ann := 
     | "recursion" =>
       match parseNatValue v with
       | some n => sd := (k, n) :: sd
-      | none => return .error s!"recursion depth not a number: {k} = {v}"
+      | none => throw s!"recursion depth not a number: {k} = {v}"
     | "indirect" =>
       match parseListValue v with
       | some ls => ind := (k, ls) :: ind
-      | none => return .error s!"indirect targets not a list: {k} = {v}"
+      | none => throw s!"indirect targets not a list: {k} = {v}"
     | "dynamic" =>
       match parseNatValue v with
       | some n => dyn := (k, n) :: dyn
-      | none => return .error s!"dynamic bound not a number: {k} = {v}"
+      | none => throw s!"dynamic bound not a number: {k} = {v}"
     | "isr" =>
       match parseNatValue v with
       | some n => isr := (k, n) :: isr
-      | none => return .error s!"isr level not a number: {k} = {v}"
+      | none => throw s!"isr level not a number: {k} = {v}"
     | "threads" =>
       match parseNatValue v with
       | some n => thr := (k, n) :: thr
-      | none => return .error s!"thread stack not a number: {k} = {v}"
-    | "" => return .error s!"top-level key outside a section: {k}"
-    | other => return .error s!"unknown section [{other}]"
+      | none => throw s!"thread stack not a number: {k} = {v}"
+    | "" => throw s!"top-level key outside a section: {k}"
+    | other => throw s!"unknown section [{other}]"
   return { selfDepth := sd.reverse, indirect := ind.reverse,
            dynamic := dyn.reverse, isr := isr.reverse, threads := thr.reverse }
 
@@ -171,10 +178,10 @@ def certOfToml (rows : List (String × String × String)) :
     Except String (List (String × Nat)) := do
   let mut c : List (String × Nat) := []
   for (sec, k, v) in rows do
-    if sec ≠ "cert" then return .error s!"cert file has unexpected section [{sec}]"
+    if sec ≠ "cert" then throw s!"cert file has unexpected section [{sec}]"
     match parseNatValue v with
     | some n => c := (k, n) :: c
-    | none => return .error s!"cert bound not a number: {k} = {v}"
+    | none => throw s!"cert bound not a number: {k} = {v}"
   return c.reverse
 
 end StackcertParsers

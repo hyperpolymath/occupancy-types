@@ -152,13 +152,13 @@ Phase 1 fails.*
 | Criterion | Verdict | Receipt |
 |-----------|---------|---------|
 | Errors inscrutable | not fired | every reject example reports a specific coded error with position (`E_PROTOCOL`, `E_USE_AFTER_DROP`, `E_DOUBLE_FREE`, `E_CLOSE_NOT_END`, `E_LEAK`, `E_ALIAS`); see `examples/session_ir/manifest.json`, all 7 matched |
-| Grade smaller than a real run | not fired | stepper asserts `steps ≤ r` on every accepted example; 7/7 holds (2=2, 4=4, 4≤5, 6=6, 2=2, 0=0, 2=2) |
+| Grade smaller than a real run | not fired | stepper asserts `steps ≤ r` on every accepted example; 9/9 holds (2=2, 4=4, 4≤5, 6=6, 2=2, 0=0, 2=2, 0=0, 2=2) |
 | Needed Echo/K-CUT to explain | not fired | this document explains the whole instrument without either |
 
 Mission-level kill test (three-way): the rejects are real bug classes
 (double-free, use-after-drop/close, protocol mismatch, close-before-End,
 aliasing, leak) — not counting trivia; the stepper demonstrates `steps ≤ grade`
-on every accept and strict inequality on `accept_choice_max.sir`. The eight
-examples are therefore not "linear sessions plus counting sends" alone: they
-pin a certified bound with a demonstrated operational reading and a memory
-invariant. **Not fired.**
+on every accept and strict inequality on `accept_choice_max.sir`. The sixteen
+manifest fixtures are therefore not "linear sessions plus counting sends"
+alone: they pin certified bounds, operational readings, and explicit cost/state
+separation witnesses. **Not fired.**

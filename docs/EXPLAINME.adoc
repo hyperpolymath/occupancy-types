@@ -10,10 +10,9 @@ This file explains how the key template claims map to real files.
 
 = occupancy-types — claims to files
 
-Project claims (ULTRAPLAN R0-B + R1). Receipts taxonomy: *TESTED* (command
-run in the work environment, output recorded in the session report),
-*UNVERIFIED* (code + exact commands, toolchain absent — fixture request in
-`docs/retraction-ledger.adoc`), *CONJECTURE* (argued, not yet checked).
+Project claims (ULTRAPLAN R0-B + R1). Receipts taxonomy: *TESTED* (command run with toolchain/version and result
+recorded here), *UNVERIFIED* (code + exact command; execution or independent
+fixture is still pending), *CONJECTURE* (argued, not yet checked).
 
 == C1. The grade r in Γ ⊢ e : A \| r is a worst-case communication-step bound
 
@@ -23,7 +22,7 @@ Status: *TESTED*.
   `src/session_ir/syntax.py:MaxPlus`).
 * Stepper: `src/session_ir/machine.py` counts steps on the real reduction;
   asserts `steps ≤ r`.
-* Evidence: `examples/session_ir/manifest.json` — 14/14 green;
+* Evidence: `examples/session_ir/manifest.json` — 16/16 green;
   `accept_choice_max.sir` certifies 5 and measures 4 (strict);
   `accept_choice_expensive.sir` certifies 6 and measures 6 (tight).
 * Command: `PYTHONPATH=src python3 -m session_ir test examples/session_ir/manifest.json`
@@ -49,31 +48,43 @@ Status: *TESTED* (mechanically).
 
 == C4. Occ: static occupancy/peak indices + linear handles program a bounded buffer
 
-Status: *UNVERIFIED* (no `idris2` in the work environment).
+Status: *TESTED locally* with Idris 2 v0.7.0 (2026-10-05).
 
 * Code: `src/occ/Occ.idr` (Occ monad, `WithAlloc` linear binder, capacity
   `LTE (S n) C`, bounded FIFO `Queue k n`), `src/occ/Demo.idr`
   (`producerConsumer : Occ 0 2 2 (Queue 2 2)` — static peak = K = 2).
-* Expected-rejection controls: `src/occ/Reject{id,Leak,OverCapacity,UseAfterFree}.idr`.
-* Kill question answered provisionally in `src/occ/README.adoc`
-  (CONJECTURE: constant grades tolerable and tight on this example).
-* Commands: `cd src/occ && idris2 --check Occ.idr && idris2 --check Demo.idr`;
-  `bash src/occ/check-rejections.sh`.
+* Expected-rejection controls: `src/occ/RejectDoubleFree.idr`,
+  `RejectLeak.idr`, `RejectOverCapacity.idr`, and `RejectUseAfterFree.idr`.
+* Local result: both accepts compile; all four expected-rejection controls
+  reject. `src/occ/README.adoc` records the toolchain and harness receipt.
+* The kill question is supported on this example only; this does not prove
+  general adequacy of constant grades. The hosted Idris job remains advisory
+  until its first green CI run.
+* Command: `bash src/occ/check-rejections.sh`.
 
 == C5. stackcert `check` is sound: accepted certificates bound every call path
 
-Status: *UNVERIFIED* (no `lean` in the work environment).
+Status: *TESTED locally* with source-built Lean 4.15.0 / Lake 5.0.0
+(2026-10-05).
 
 * Theorem: `StackcertCore.cert_sound` in `src/stackcert/StackcertCore.lean`
   (zero imports; no holes; no Classical.choice).
-* `#print axioms` footprint: *not yet available*. After the first successful
-  `lean StackcertCore.lean` run, the exact output of
-  `#print axioms StackcertCore.cert_sound` will be pasted here verbatim.
-  Expected form: `'StackcertCore.cert_sound' depends on axioms: [...]`
-  with an empty list — this expectation is CONJECTURE until pasted.
-* Commands: `bash tests/run_stackcert.sh` (core + fixture + four negative
-  controls: decremented bound, undeclared recursion, unresolved indirect,
-  undeclared cycle).
+* Exact `#print axioms` receipt:
+
+[source,text]
+----
+'StackcertCore.cert_sound' does not depend on any axioms
+----
+
+* `bash tests/run_stackcert.sh`: PASS — core compile and Lake build pass;
+  `probe.*` is accepted for 6 functions; `cert-decremented` and
+  `undeclared-recursion` reject with `E_CERT`, `unresolved-indirect` rejects
+  with `E_INDIRECT`, and `undeclared-cycle` rejects with `E_CYCLE`.
+* `bash scripts/check-proofs.sh lean4`: PASS; the gated `ApiTypes.lean`
+  manifest entry compiles under Lean 4.15.0.
+* Scope: the parser/CLI is fixture-tested but is outside the formal theorem.
+  This local source-built receipt is not a hosted CI run or a Zephyr target
+  measurement; the R1 fixture request remains pending.
 
 == C6. Fixtures are real compiler output
 
@@ -85,6 +96,37 @@ Status: *TESTED* (provenance), fixture measurements *BLOCKED*.
 * Zephyr ground truth (painted-stack HWM on qemu_cortex_m3) is a fixture
   request: exact commands in `src/stackcert/README.adoc`; nothing measured
   until it runs.
+
+== C7. Communication cost and occupancy state are distinct observations
+
+Status: *TESTED locally* with the Session IR fixture runner and the Lean
+4.15.0 source bootstrap (`lean --version`: `4.15.0-pre`).
+
+* The manifest has a same-cost/different-state pair: `accept_unit.sir` and
+  `accept_pair_drop.sir` both certify communication grade 0 and measure 0
+  communication steps, while their operational `peak_live` measurements are
+  0 and 6 bytes respectively.
+* It also has a same-state/different-cost pair:
+  `accept_pair_drop.sir` and `accept_pair_drop_send_recv.sir` both measure
+  `peak_live = 6` bytes, while their certified grades are 0 and 2 (measured
+  communication steps 0 and 2).
+* Formal receipt: `verification/proofs/lean4/CostStateSeparation.lean`
+  defines additive communication cost alongside the HWM footprint composition
+  `(p₁,n₁)·(p₂,n₂) = (max(p₁,n₁+p₂), n₁+n₂)`. It proves both witness
+  inequalities and that neither scalar observation is a function of the
+  other on the model; `#print axioms` reports no axioms.
+* Commands: `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -m session_ir
+  test examples/session_ir/manifest.json` and `bash scripts/check-proofs.sh
+  lean4` (source bootstrap Lean 4.15.0-pre).
+* Scope: this is a concrete observational separation and a small algebraic
+  witness, not a mechanised soundness link between the Python checker/machine
+  and Lean, nor a claim that Session IR v0 grades live memory. In v0, live
+  bytes are measured operationally; HWM grading remains planned for R2–R3.
+* Mathesis classification: no grade is assigned. This direct Lean witness is
+  not a Grade 2i translation (no Agda source) or a Grade 1 receipt (no AXLE
+  API verification). Mathesis currently has repository-level census counts,
+  not a theorem-level row for this result; this agent-produced witness is not
+  independent corroboration.
 
 = RSR template claims
 

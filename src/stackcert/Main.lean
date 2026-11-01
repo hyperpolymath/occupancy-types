@@ -5,12 +5,13 @@ SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 Main — lake exe stackcert --ci F.ci --su F.su --ann annotations.toml --cert cert.toml
 → exit 0 (certificate accepted) / 1 (rejected) / 2 (usage).
 
-Pipeline: parse inputs (UNVERIFIED layer) → build CallGraph → run
-StackcertCore.check (verified layer) → report.  CLI-level rejections before
-the core runs: unresolved indirect calls, alloca/VLA-style dynamic frames
-without a [dynamic] bound, call edges into longjmp-family functions, and
-non-self cycles without annotation.  See README.adoc for the fixture request
-and ground-truth protocol; this exe's outputs are NOT yet a measurement.
+Pipeline: parse inputs (fixture-tested I/O, outside the proof) → build
+CallGraph → run StackcertCore.check (verified core) → report.  CLI-level
+rejections before the core runs: unresolved indirect calls, alloca/VLA-style
+dynamic frames without a [dynamic] bound, call edges into longjmp-family
+functions, and non-self cycles without annotation.  See README.adoc for the
+fixture request and ground-truth protocol; this exe's outputs are NOT yet a
+measurement.
 -/
 
 import StackcertCore
@@ -37,7 +38,7 @@ def isForbiddenTarget (t : String) : Bool :=
   || t == "_setjmp" || t == "__sigsetjmp"
 
 /-- Non-self cycle detection (CLI-level; `partial` is fine outside the proof). -/
-partial def reaches (callees : List (String × List String)) (start fuel : Nat)
+partial def reaches (callees : List (String × List String)) (fuel : Nat)
     (cur tgt : String) : Bool :=
   if fuel = 0 then false
   else
@@ -47,7 +48,7 @@ partial def reaches (callees : List (String × List String)) (start fuel : Nat)
       ds.any (fun d =>
         if d == tgt then true
         else if d == cur then false
-        else reaches callees start (fuel - 1) d tgt)
+        else reaches callees (fuel - 1) d tgt)
 
 partial def hasNonSelfCycle (names : List String)
     (callees : List (String × List String)) : Option (String × String) :=
@@ -57,7 +58,7 @@ partial def hasNonSelfCycle (names : List String)
     match lookupStrs callees v with
     | none => hasNonSelfCycle rest callees
     | some ds =>
-      match ds.find? (fun u => u != v && reaches callees (names.length + 1) (names.length + 1) v u) with
+      match ds.find? (fun u => u != v && reaches callees (names.length + 1) u v) with
       | some u => some (v, u)
       | none => hasNonSelfCycle rest callees
 

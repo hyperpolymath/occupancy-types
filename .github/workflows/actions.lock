@@ -59,6 +59,8 @@ workflows:
         - 'haskell-actions/setup@v2.12.0'
     '.github/workflows/push-email-notify.yml':
         - 'hyperpolymath/smtp-notify-action@v0.3.0'
+    '.github/workflows/proofs.yml':
+        - 'actions/checkout@v7.0.1'
     '.github/workflows/quality.yml':
         - 'actions/checkout@v7.0.1'
         - 'editorconfig-checker/action-editorconfig-checker@v3.0.0'

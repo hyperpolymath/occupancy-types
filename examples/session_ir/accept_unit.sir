@@ -1,0 +1,5 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* accept_unit.sir — empty communication and no allocated live state.
+
+   Certified r = 0. Machine: steps = 0, peak_live = 0 bytes. *)
+unit

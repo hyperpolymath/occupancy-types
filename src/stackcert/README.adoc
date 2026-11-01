@@ -4,12 +4,13 @@
 :toc:
 :icons: font
 
-Status: *sources complete; UNVERIFIED in the authoring environment* (no
-`lean`/`lake` on PATH there — toolchain downloads blocked; see
-`docs/retraction-ledger.adoc` §Blocked). Every claim below is either
-code-level ("the file says X") or an exact verification command. Nothing is
-reported as proved until `bash tests/run_stackcert.sh` runs green and its
-output is pasted into `docs/EXPLAINME.adoc`.
+Status: *local proof-and-fixture checks pass* with Lean 4.15.0 / Lake 5.0.0
+(source-built in this environment) on 2026-10-05. `bash tests/run_stackcert.sh`
+passes: `cert_sound` compiles with no axioms; the positive fixture is accepted,
+and all four negative controls reject. This is not a hosted GitHub Actions
+receipt or a target-stack measurement. The parser/CLI is exercised by fixtures
+but remains outside the formal theorem; Zephyr ground truth is still pending.
+See `docs/retraction-ledger.adoc` for status.
 
 == What it is
 
@@ -28,13 +29,13 @@ A certificate checker for worst-case stack depth:
   must be listed in `[indirect]` and resolve), alloca/VLA/longjmp-family
   calls, non-self cycles.
 * *Verified core* — `StackcertCore.lean`: `check` and `cert_sound`, zero
-  imports, no holes, no Classical.choice. The theorem: if `check` accepts,
-  every call path's inflated-frame cost is ≤ the certificate of its start
-  function. Verify with `lean StackcertCore.lean`; the `#print axioms`
-  output is the receipt (expected clean — to be pasted into EXPLAINME after
-  the first verified run, not before).
-* *Unverified I/O layer* — `Parsers.lean` + `Main.lean` (parse `.ci`/`.su`/
-  TOML, CLI rejections). Explicitly outside the theorem.
+  imports, no holes, and no axiom dependencies. The theorem: if `check`
+  accepts, every call path's inflated-frame cost is ≤ the certificate of its
+  start function. Verified with `lean StackcertCore.lean`; `#print axioms`
+  reports that `StackcertCore.cert_sound` does not depend on any axioms.
+* *Fixture-tested I/O layer* — `Parsers.lean` + `Main.lean` (parse `.ci`/`.su`/
+  TOML, CLI rejections). It is exercised by the committed fixtures but remains
+  outside the formal theorem; general input behavior is not formally verified.
 
 == Inputs
 
@@ -51,7 +52,7 @@ A certificate checker for worst-case stack depth:
 Fixtures in `fixtures/` are genuine GCC output for `probe.c`/`cycle.c`
 (regenerate with `gcc -O0 -fcallgraph-info=su -fstack-usage -c <file>.c`).
 
-== Verification commands (receipts that do not yet exist)
+== Verification commands and current local receipt
 
 [source,bash]
 ----
@@ -68,10 +69,19 @@ lake exe stackcert --ci fixtures/probe.ci --su fixtures/probe.su \
   --ann fixtures/annotations.toml --cert fixtures/cert-decremented.toml  # exit 1
 ----
 
-Negative controls (all must be rejected): decremented bound
+Local receipt — *2026-10-05; Lean 4.15.0, Lake 5.0.0*:
+
+* core compile: PASS; `StackcertCore.cert_sound` has no axiom dependencies;
+* `lake build`: PASS;
+* positive `probe.*` fixture: accepted for 6 functions;
+* `cert-decremented` and `undeclared-recursion`: rejected with `E_CERT`;
+* `unresolved-indirect`: rejected with `E_INDIRECT`;
+* `undeclared-cycle`: rejected with `E_CYCLE`.
+
+All four negative controls are rejected by the current run: decremented bound
 (`cert-decremented.toml`), undeclared self-recursion
 (`annotations-no-recursion.toml`), unresolved indirect call
-(`annotations-no-indirect.toml`), undeclared cycle (`cycle.*`).
+(`annotations-no-indirect.toml`), and undeclared cycle (`cycle.*`).
 
 == Fixture request — Zephyr ground truth (R1)
 
@@ -120,8 +130,8 @@ in the ledger as *blocked*, not as success.
 ----
 src/stackcert/
   StackcertCore.lean   verified core (check + cert_sound) — zero imports
-  Parsers.lean         .ci/.su/TOML parsing (UNVERIFIED layer)
-  Main.lean            lake exe stackcert CLI (UNVERIFIED layer)
+  Parsers.lean         .ci/.su/TOML parsing (fixture-tested, outside proof)
+  Main.lean            lake exe stackcert CLI (fixture-tested, outside proof)
   lakefile.toml lean-toolchain
   fixtures/            real GCC outputs + certificates + negative controls
 tests/run_stackcert.sh the harness (exit 2 = fixture request, never a skip)
