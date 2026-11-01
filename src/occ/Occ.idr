@@ -80,6 +80,7 @@ data Occ : (pre, post, peak : Nat) -> Type -> Type where
 ||| Allocate and hand the handle to a linear continuation: the binder h has
 ||| multiplicity 1, so dropping it (0 uses), duplicating it, or freeing twice
 ||| (2 uses) are all type errors.
+||| The proof `ok` requires the new live-cell count to fit within `capacity`.
 public export
 WithAlloc : (capacity : Nat) -> (0 ok : LTE (S n) capacity)
          -> (1 k : (1 h : Handle) -> Occ (S n) post peak b)

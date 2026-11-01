@@ -37,7 +37,9 @@ def isForbiddenTarget (t : String) : Bool :=
   || t == "_longjmp" || t == "__longjmp" || t == "__longjmp_chk"
   || t == "_setjmp" || t == "__sigsetjmp"
 
-/-- Non-self cycle detection (CLI-level; `partial` is fine outside the proof). -/
+/-- Search from `cur` for an edge to `tgt`, following at most `fuel` edges.
+Returns false when fuel runs out or a node has no callees; non-target self
+edges are ignored. This CLI-level search is outside the proof. -/
 partial def reaches (callees : List (String × List String)) (fuel : Nat)
     (cur tgt : String) : Bool :=
   if fuel = 0 then false
@@ -50,6 +52,9 @@ partial def reaches (callees : List (String × List String)) (fuel : Nat)
         else if d == cur then false
         else reaches callees (fuel - 1) d tgt)
 
+/-- Find the first listed function and non-self callee for which the bounded
+search finds a path back to that function. Returns none if no such pair is
+found; the search bound is one more than the number of names still to visit. -/
 partial def hasNonSelfCycle (names : List String)
     (callees : List (String × List String)) : Option (String × String) :=
   match names with

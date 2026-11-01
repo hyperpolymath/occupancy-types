@@ -13,6 +13,8 @@ structure HwmFootprint where
   net : Nat
   deriving DecidableEq, Repr
 
+/-- Compose successive high-water-mark footprints: the second peak is offset
+by the first net change, and net changes are added. -/
 def hwmSeq (a b : HwmFootprint) : HwmFootprint :=
   ⟨max a.peak (a.net + b.peak), a.net + b.net⟩
 
@@ -22,14 +24,16 @@ structure Footprint where
   hwm : HwmFootprint
   deriving DecidableEq, Repr
 
+/-- Compose successive footprints, adding communication costs and combining
+their high-water marks. -/
 def seq (a b : Footprint) : Footprint :=
   ⟨a.communicationCost + b.communicationCost, hwmSeq a.hwm b.hwm⟩
 
 -- Observation represented by `examples/session_ir/accept_unit.sir`.
 def unitTrace : Footprint := ⟨0, ⟨0, 0⟩⟩
 
-/-- The memory-only trace in `accept_pair_drop.sir`: zero net state change,
-    with six allocated bytes recorded in the high-water mark. -/
+/-- A memory-only trace with zero net state change and `bytes` recorded in the
+high-water mark. Six bytes represent `accept_pair_drop.sir`. -/
 def allocateDrop (bytes : Nat) : Footprint := ⟨0, ⟨bytes, 0⟩⟩
 
 /-- One unit send and its matching receive: two communication steps, no bytes
