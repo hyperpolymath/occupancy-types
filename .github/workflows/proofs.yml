@@ -1,14 +1,14 @@
 # SPDX-License-Identifier: MPL-2.0
 # SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 #
-# proofs.yml — repeatable CI for the R0-B / R1 proof rungs first recorded as
-# BLOCKED in the authoring environment.
+# proofs.yml — the R0-B / R1 proof rungs that cannot run in the authoring
+# environment.
 #
-# WHY THIS WORKFLOW EXISTS: at the time of that record the authoring machine
-# had no `idris2` or `lean`/`lake` on PATH and release-asset hosts were
-# unreachable. Local source builds have since enabled one-off checks, but do
-# not replace a reproducible hosted run; GitHub runners install the pinned
-# toolchains and verify the claims on every relevant change.
+# WHY THIS WORKFLOW EXISTS: both rungs were recorded BLOCKED in
+# docs/retraction-ledger.adoc because the authoring machine has no `idris2`
+# and no `lean`/`lake`, and cannot fetch toolchain binaries (release-asset
+# hosts unreachable).  GitHub runners *can* fetch them, so the rungs are
+# verified here rather than reported as proved by nobody.
 #
 #   stackcert — Lean 4, toolchain pinned by src/stackcert/lean-toolchain.
 #               `bash tests/run_stackcert.sh` = core `#print axioms cert_sound`
@@ -69,11 +69,11 @@ jobs:
     name: R0-B Occ spike (Idris 2, advisory)
     runs-on: ubuntu-latest
     timeout-minutes: 45
-    # Advisory until the first green GitHub Actions run: the local source-built
-    # harness now passes, but this hosted job has not yet supplied a CI receipt.
-    # A red hosted result is still information (toolchain assumptions or a
-    # spike error), not a regression to block on. Remove this flag only after a
-    # green run on main; see docs/retraction-ledger.adoc.
+    # Advisory until the first green run: this rung has never executed
+    # anywhere, so a red result is information (bad toolchain assumptions,
+    # or a real error in the spike) rather than a regression to block on.
+    # Remove this flag once the job has passed on main — see
+    # docs/retraction-ledger.adoc §Blocked.
     continue-on-error: true
     steps:
       - uses: actions/checkout@v7.0.1

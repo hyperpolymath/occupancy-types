@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+#
+# session-ir.yml — CI lane for the R0-B Session IR rung (ULTRAPLAN Phase 1).
+#
+# WHY THIS WORKFLOW EXISTS: the manifest-driven Session IR checker is a
+# reproducible R0-B rung and needs a hosted receipt as well as local evidence.
+# The current manifest pins 16 fixtures (9 accepts and 7 expected rejects),
+# including the W2.2 cost/state separation witnesses. This lane checks the
+# current Julia implementation against that manifest.
+#
+# The Julia 1.10 package uses Base only; no third-party dependencies are
+# required. That is deliberate: fewer moving parts and no package setup.
+#
+# The lane runs the SAME command as `scripts/check.sh` stage 1, including the
+# kill-test audit and the repo-shape gates, which are the other two stages
+# that can execute without a prover. Proof stages (Idris, Lean) are out of
+# scope here — see .github/workflows/proofs.yml.
+name: Session IR (R0-B)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'src/julia/**'
+      - 'examples/session_ir/**'
+      - 'scripts/check*.sh'
+      - 'docs/OPERATIONAL-MODEL.md'
+      - '.github/workflows/session-ir.yml'
+  pull_request:
+    paths:
+      - 'src/julia/**'
+      - 'examples/session_ir/**'
+      - 'scripts/check*.sh'
+      - 'docs/OPERATIONAL-MODEL.md'
+      - '.github/workflows/session-ir.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  session-ir:
+    name: R0-B Session IR (checker + kill-test + repo shape)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - uses: julia-actions/setup-julia@v2.7.0
+        with:
+          version: "1.10"
+
+      - name: Session IR checker on the 16 pinned fixtures
+        # 9 accepts (judgment, measured steps <= grade, peak live bytes) and
+        # 7 rejects (each pinning its exact error code). A reject fixture that
+        # starts being ACCEPTED is a regression, not a tolerance question.
+        run: |
+          set -euo pipefail
+          julia --project=src/julia src/julia/bin/sessionir.jl test examples/session_ir/manifest.json
+
+      - name: Repo shape gates and kill-test audit
+        # The runnable slice of scripts/check.sh: root allowlist, docs .md
+        # policy, and the Phase 0 kill-test block (four sentences, banned word
+        # absent). Proof stages are excluded by design (see proofs.yml).
+        run: |
+          set -euo pipefail
+          bash scripts/check-root-shape.sh .
+          bash scripts/check-no-md-in-docs.sh .
+          bash scripts/check.sh --runnable-only 2>&1 | grep -E '^(PASS|FAIL|BLOCKED)' || true
+          # --runnable-only exits 0 with proofs BLOCKED; assert the three
+          # runnable stages actually PASSED, and that nothing FAILed.
+          out="$(bash scripts/check.sh --runnable-only 2>&1)"
+          echo "$out"
+          echo "$out" | grep -q '^FAIL' && exit 1
+          echo "$out" | grep -q 'PASS: session-ir examples' || exit 1
+          echo "$out" | grep -q 'PASS: kill-test audit' || exit 1
+          echo "$out" | grep -q 'PASS: root allowlist' || exit 1

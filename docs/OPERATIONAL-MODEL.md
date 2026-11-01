@@ -5,8 +5,8 @@ SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 # OPERATIONAL-MODEL — occupancy-types Session IR (v0)
 
 Status: ULTRAPLAN R0-B, Phase 0. Paired with Phase 1 artefacts in
-`src/session_ir/`, examples in `examples/session_ir/`. Plan of record:
-`ULTRAPLAN.md` at the repo root.
+`src/julia/` and examples in `examples/session_ir/`. The current v0 stepper is
+the Julia implementation. Plan of record: `ULTRAPLAN.md` at the repo root.
 
 This document fixes what the grade *means*, what memory *means*, and what the
 model deliberately does **not** read. If a claim about the checker cannot be
@@ -24,7 +24,7 @@ A closed program runs on a deterministic machine with four components:
 | Clock | communication steps: `send`, `recv`, `select`, `case` each count 1 | the only cost axis in v0 |
 
 The machine is deterministic: closed programs reduce along exactly one path.
-A stepper (`src/session_ir/machine.py`) reduces a checked program, counts
+A stepper (`src/julia/src/Machine.jl`) reduces a checked program, counts
 communication steps, and records operational statistics (peak live bytes,
 peak in-flight channel events). Machine-level faults (`R_*` codes) are
 self-checks: they fire loudly if the checker and the machine ever disagree,
@@ -41,8 +41,8 @@ of `e` can perform. The grade carrier is ℕ (v0 has no recursion, so no ∞ is
 needed; `∞` remains the designated value for unbounded protocols if recursion
 is ever admitted — currently a rejection, per ULTRAPLAN D6).
 
-Grades form the max-plus semiring (ℕ, max, +, 0), exposed as a small
-importable object (`session_ir.syntax.MaxPlus`): `op_add = max` (choice),
+Grades form the max-plus semiring (ℕ, max, +, 0), exposed as the
+`MaxPlus` module in `src/julia/src/Syntax.jl`: `op_add = max` (choice),
 `op_mul = +` (sequence), `zero = one = 0`. The six typing-rule shapes are
 expressed only in terms of it:
 
@@ -63,8 +63,9 @@ takes a cheaper branch than the worst case — worst-case-by-construction.
 ### 2.1 Kill test: why choice is max and sequence is +
 
 The Phase 0 kill test: explain ⊕ = max, ⊗ = + in four sentences without the
-word "tropical". This block is machine-audited by `scripts/check.sh`
-(exactly four sentences; the banned word absent):
+word "tropical". This block is machine-audited by
+`julia scripts/kill-test-audit.jl` (also run by `scripts/check.sh`; exactly
+four sentences, with the banned word absent):
 
 <!-- KILL-TEST-BEGIN -->
 When a program may take any one of several branches, the number we can honestly promise is the number from the most expensive branch, because we cannot rule that branch out.
@@ -135,13 +136,13 @@ used here is defined here.
 ## 5. Running the artefact
 
 ```sh
-PYTHONPATH=src python3 -m session_ir check FILE        # prints A|r or error
-PYTHONPATH=src python3 -m session_ir run FILE --trace  # steps, HWM, trace
-PYTHONPATH=src python3 -m session_ir test examples/session_ir/manifest.json
+julia --project=src/julia src/julia/bin/sessionir.jl check FILE        # prints A|r or error
+julia --project=src/julia src/julia/bin/sessionir.jl run FILE --trace  # steps, HWM, trace
+julia --project=src/julia src/julia/bin/sessionir.jl test examples/session_ir/manifest.json
 ```
 
 Reproducible check for the whole rung: `scripts/check.sh` (also exposed as
-`just check`). Python 3.11 stdlib only.
+`just check`). Julia 1.10; the Session IR package uses Base only.
 
 ## 6. Phase 1 kill-test verdict (pre-registered criteria)
 
@@ -151,14 +152,14 @@ Phase 1 fails.*
 
 | Criterion | Verdict | Receipt |
 |-----------|---------|---------|
-| Errors inscrutable | not fired | every reject example reports a specific coded error with position (`E_PROTOCOL`, `E_USE_AFTER_DROP`, `E_DOUBLE_FREE`, `E_CLOSE_NOT_END`, `E_LEAK`, `E_ALIAS`); see `examples/session_ir/manifest.json`, all 7 matched |
-| Grade smaller than a real run | not fired | stepper asserts `steps ≤ r` on every accepted example; 9/9 holds (2=2, 4=4, 4≤5, 6=6, 2=2, 0=0, 2=2, 0=0, 2=2) |
+| Errors inscrutable | not fired in the prior run | the pre-port Python runner matched all 7 coded rejection controls; the current Julia lane rechecks the same manifest |
+| Grade smaller than a real run | not fired in the prior run | the pre-port Python stepper checked `steps ≤ r` on all 9 accepts (2=2, 4=4, 4≤5, 6=6, 2=2, 0=0, 2=2, 0=0, 2=2); the current Julia lane rechecks them |
 | Needed Echo/K-CUT to explain | not fired | this document explains the whole instrument without either |
 
 Mission-level kill test (three-way): the rejects are real bug classes
 (double-free, use-after-drop/close, protocol mismatch, close-before-End,
-aliasing, leak) — not counting trivia; the stepper demonstrates `steps ≤ grade`
-on every accept and strict inequality on `accept_choice_max.sir`. The sixteen
-manifest fixtures are therefore not "linear sessions plus counting sends"
-alone: they pin certified bounds, operational readings, and explicit cost/state
-separation witnesses. **Not fired.**
+aliasing, leak) — not counting trivia. The pre-port Python runner demonstrated
+`steps ≤ grade` on every accept and strict inequality on `accept_choice_max.sir`;
+the current Julia lane rechecks the same 16-row manifest. The fixtures pin
+certified bounds, operational readings, and explicit cost/state separation
+witnesses. **Not fired in the prior run; current Julia CI receipt pending.**

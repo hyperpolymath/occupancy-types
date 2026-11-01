@@ -1,0 +1,46 @@
+# SPDX-License-Identifier: MPL-2.0
+# SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
+#
+# Lean 4 gate for the standalone proof manifest. Kept separate from the
+# Idris/Stackcert workflow so this proof-witness check runs only in Lean.
+name: Lean 4 proof manifest
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main, master]
+    paths:
+      - 'verification/proofs/lean4/**'
+      - 'scripts/check-proofs.sh'
+      - '.github/workflows/lean4-manifest.yml'
+  pull_request:
+    paths:
+      - 'verification/proofs/lean4/**'
+      - 'scripts/check-proofs.sh'
+      - '.github/workflows/lean4-manifest.yml'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lean4-manifest:
+    name: Lean 4.15.0 (proof manifest)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+      - name: Install elan
+        run: |
+          set -euo pipefail
+          curl -sSfL https://elan.lean-lang.org/elan-init.sh | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+      - name: Check every gated Lean module
+        run: |
+          set -euo pipefail
+          export PATH="$HOME/.elan/bin:$PATH"
+          elan toolchain install leanprover/lean4:v4.15.0
+          elan run leanprover/lean4:v4.15.0 bash scripts/check-proofs.sh lean4

@@ -3,7 +3,7 @@
 --
 -- A small, kernel-checked witness for the sequential case of max-plus
 -- communication cost and occupancy HWM. This is an algebraic finite-witness
--- result, not a soundness theorem for the Python Session IR.
+-- result, not a soundness theorem for the Session IR checker or stepper.
 
 namespace CostState
 

@@ -35,7 +35,7 @@ grade, echo index, residue measure and warrant are pairwise distinct in both.
 
 *Max-plus semiring*::
   `(ℕ ∪ {∞}, max, +, 0)` — the grade algebra of cost. Exposed as the
-  importable `MaxPlus` interface (`src/session_ir/syntax.py`).
+  importable `MaxPlus` interface (`src/julia/src/Syntax.jl`).
 
 *HWM monoid*::
   The sequential composition law of state resources (see *occupancy grade*).
@@ -95,9 +95,9 @@ grade, echo index, residue measure and warrant are pairwise distinct in both.
 |===
 | Term | Realisation
 
-| Cost grade | `MaxPlus`, `Γ ⊢ e : A \| r` in `src/session_ir/checker.py`
+| Cost grade | `MaxPlus`, `Γ ⊢ e : A \| r` in `src/julia/src/Checker.jl`
 | Occupancy grade | R2–R3 (not in v0)
-| Communication step | machine clock in `src/session_ir/machine.py`
+| Communication step | machine clock in `src/julia/src/Machine.jl`
 | Linear uniqueness | checker context rules; `E_ALIAS`/`E_LEAK` family
 | Explicit drop/close | `drop`/`close` rules; `E_DOUBLE_FREE`, `E_CLOSE_NOT_END`
 | Certificate | `check` output `A\|r`; `@r` annotations (checked)

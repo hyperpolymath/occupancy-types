@@ -29,8 +29,9 @@ jobs:
   hypatia:
     # secrets: inherit is required so HYPATIA_SCAN_PAT (org) reaches the
     # reusable. It does not, and cannot, cure a Hypatia *scanner build*
-    # failure: the reusable still clones hypatia@HEAD and runs mix escript.build.
-    # That class of red is estate-wide (hypatia#863 broke HEAD on 2026-09-26)
-    # and is not a consumer finding. See docs/status/HYPATIA-GATE.adoc.
-    uses: hyperpolymath/standards/.github/workflows/hypatia-scan-reusable.yml@da2c748aad55c1a1dcba00b60fe4a35017bc6540
+    # failure: this caller does not override hypatia-ref, so the reusable builds
+    # the scanner from its pinned default commit, not HEAD (mix escript.build).
+    # Scanner build failures are upstream failures, not consumer findings.
+    # See docs/status/HYPATIA-GATE.adoc.
+    uses: hyperpolymath/standards/.github/workflows/hypatia-scan-reusable.yml@94572e612a7bf11f8e6343d19adadf17ef2a3de3
     secrets: inherit

@@ -10,26 +10,30 @@ This file explains how the key template claims map to real files.
 
 = occupancy-types — claims to files
 
-Project claims (ULTRAPLAN R0-B + R1). Receipts taxonomy: *TESTED* (command run with toolchain/version and result
-recorded here), *UNVERIFIED* (code + exact command; execution or independent
-fixture is still pending), *CONJECTURE* (argued, not yet checked).
+Project claims (ULTRAPLAN R0-B + R1). Receipts taxonomy: *TESTED* (command,
+toolchain/version, and result recorded here), *UNVERIFIED* (code + exact
+command; execution or an independent fixture is still pending), *CONJECTURE*
+(argued, not yet checked).
 
 == C1. The grade r in Γ ⊢ e : A \| r is a worst-case communication-step bound
 
-Status: *TESTED*.
+Status: *TESTED* under the pre-port Python reference runner for all 16
+manifest fixtures; the current Julia runner is wired to the same manifest, with
+its expanded-fixture CI receipt pending.
 
-* Checker: `src/session_ir/checker.py` (six rule shapes over
-  `src/session_ir/syntax.py:MaxPlus`).
-* Stepper: `src/session_ir/machine.py` counts steps on the real reduction;
+* Checker: `src/julia/src/Checker.jl` (six rule shapes over the max-plus
+  operations in `src/julia/src/Syntax.jl`).
+* Stepper: `src/julia/src/Machine.jl` counts steps on the real reduction and
   asserts `steps ≤ r`.
-* Evidence: `examples/session_ir/manifest.json` — 16/16 green;
-  `accept_choice_max.sir` certifies 5 and measures 4 (strict);
-  `accept_choice_expensive.sir` certifies 6 and measures 6 (tight).
-* Command: `PYTHONPATH=src python3 -m session_ir test examples/session_ir/manifest.json`
+* Evidence: `examples/session_ir/manifest.json` — 16 fixtures; `accept_choice_max.sir`
+  certifies 5 and measures 4 (strict), while `accept_choice_expensive.sir`
+  certifies 6 and measures 6 (tight).
+* Current command: `julia --project=src/julia src/julia/bin/sessionir.jl test examples/session_ir/manifest.json`.
 
 == C2. Linear uniqueness rejects real memory/protocol bugs
 
-Status: *TESTED*.
+Status: *TESTED* for the original rejection controls in the Julia/Python port
+comparison; the expanded 16-row manifest's Julia CI receipt is pending.
 
 * Seven expected-rejection controls, each pinning an error class:
   double-send, drop-then-send (use-after-drop), protocol mismatch,
@@ -39,12 +43,13 @@ Status: *TESTED*.
 
 == C3. The Phase 0 kill test passes as written
 
-Status: *TESTED* (mechanically).
+Status: *TESTED* by the prior local audit; the current Julia lane reruns it
+and its hosted receipt is pending.
 
 * `docs/OPERATIONAL-MODEL.md` §2.1: four sentences explaining ⊕ = max,
   ⊗ = +, banned word absent.
-* Command: `bash scripts/check.sh` stage 2 audits the block (sentence count
-  + banned-word grep).
+* Command: `julia scripts/kill-test-audit.jl` (also run by
+  `scripts/check.sh`) audits the block (sentence count + banned-word grep).
 
 == C4. Occ: static occupancy/peak indices + linear handles program a bounded buffer
 
@@ -99,13 +104,14 @@ Status: *TESTED* (provenance), fixture measurements *BLOCKED*.
 
 == C7. Communication cost and occupancy state are distinct observations
 
-Status: *TESTED locally* with the Session IR fixture runner and the Lean
-4.15.0 source bootstrap (`lean --version`: `4.15.0-pre`).
+Status: *TESTED locally* for the algebraic Lean witness and the 16-row manifest
+under the pre-port Python runner; hosted Lean-manifest and current Julia receipts
+are pending.
 
 * The manifest has a same-cost/different-state pair: `accept_unit.sir` and
   `accept_pair_drop.sir` both certify communication grade 0 and measure 0
-  communication steps, while their operational `peak_live` measurements are
-  0 and 6 bytes respectively.
+  communication steps, while their operational `peak_live` readings are 0
+  and 6 bytes respectively.
 * It also has a same-state/different-cost pair:
   `accept_pair_drop.sir` and `accept_pair_drop_send_recv.sir` both measure
   `peak_live = 6` bytes, while their certified grades are 0 and 2 (measured
@@ -115,18 +121,29 @@ Status: *TESTED locally* with the Session IR fixture runner and the Lean
   `(p₁,n₁)·(p₂,n₂) = (max(p₁,n₁+p₂), n₁+n₂)`. It proves both witness
   inequalities and that neither scalar observation is a function of the
   other on the model; `#print axioms` reports no axioms.
-* Commands: `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -m session_ir
-  test examples/session_ir/manifest.json` and `bash scripts/check-proofs.sh
-  lean4` (source bootstrap Lean 4.15.0-pre).
+* Historical fixture command (before the Python implementation was removed):
+  `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -m session_ir test
+  examples/session_ir/manifest.json` — PASS, 16/16. Current Julia command is
+  listed under C1; its expanded-manifest CI result is pending.
+* Lean command: `bash scripts/check-proofs.sh lean4` — PASS with source-built
+  Lean 4.15.0-pre. `.github/workflows/lean4-manifest.yml` now reruns the
+  Lean manifest on pinned Lean 4.15.0; that hosted receipt is pending.
 * Scope: this is a concrete observational separation and a small algebraic
-  witness, not a mechanised soundness link between the Python checker/machine
+  witness, not a mechanized soundness link between the Julia checker/stepper
   and Lean, nor a claim that Session IR v0 grades live memory. In v0, live
   bytes are measured operationally; HWM grading remains planned for R2–R3.
-* Mathesis classification: no grade is assigned. This direct Lean witness is
-  not a Grade 2i translation (no Agda source) or a Grade 1 receipt (no AXLE
-  API verification). Mathesis currently has repository-level census counts,
-  not a theorem-level row for this result; this agent-produced witness is not
-  independent corroboration.
+* Mathesis classification: no grade is assigned. Grade 3 requires a locally
+  checked Agda formulation; this standalone Lean file is not one. No
+  theorem-specific correspondence to an Agda witness has been established for
+  Grade 2i, and there is no Grade 1 AXLE API verification receipt. Mathesis'
+  current occupancy-types row is repository-level (snapshot `pushed_at`
+  2026-10-18), with no theorem-level entry; its census uses textual file,
+  declaration, and hole scans rather than kernel verification. This
+  agent-produced artifact is not independent corroboration.
+* Before any future Grade 3 claim for this result, a theorem-level Agda
+  formulation would need its own local check, exact toolchain/commit
+  provenance, and axiom/library record, followed by the policy-required
+  Mathesis initial audit. This Lean receipt does not provide those items.
 
 = RSR template claims
 
@@ -240,3 +257,27 @@ Caveat:
 This project is licensed under the Mozilla Public License, v. 2.0. See the `LICENSE` file for details.
 
 SPDX-License-Identifier: CC-BY-SA-4.0
+
+== Applications in practice
+
+The worked case is a pipeline stage's memory, as measured by
+https://github.com/hyperpolymath/MetaManifold-WebUI/blob/7d5e9a4/src/core/memory_probe.jl[MetaManifold's
+memory probe] (pinned on the fork's `main` at 7d5e9a4; the reading at
+https://github.com/hyperpolymath/MetaManifold-WebUI/blob/7d5e9a4/docs/occupancy-2026-10.adoc[docs/occupancy-2026-10.adoc],
+the grades as https://github.com/hyperpolymath/MetaManifold-WebUI/issues/105[issue #105]).
+When the run config sets `occupancy_probe.enabled: true`, the probe records
+two separate raw readings for a stage: Julia's allocation total (a cost:
+it only ever adds up, whatever order the stage's work ran in), and the
+resident memory of each child process, sampled from /proc. Two checks,
+honestly separated. The session-IR checker certifies its own calculus, not
+these readings: a session's communication steps are typed against a
+worst-case bound before it runs, so "this session fits its step budget" is
+a certificate rather than a hope. The readings are typed after the fact, on
+the measurement side: the grade algebra (the HWM proposal, in
+resource-algebra) turns the recorded numbers into a *typed* quantity whose
+fold is checked against what the run actually occupied. The practical
+value for long-running pipelines on shared machines: the failure mode moves
+from "the run died at 3am on the swap partition and the logs cannot say
+what it took" to "what the run occupied is a recorded, typed quantity",
+and the reasoning is compositional -- stages compose the way their
+sessions do.

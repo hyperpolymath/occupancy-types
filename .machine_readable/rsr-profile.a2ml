@@ -96,7 +96,7 @@ capabilities = [
 # build/just/repo-init.just: every minted repo records the canon it was cut
 # from, so "which repos are on canon 1.x?" becomes a grep instead of a campaign.
 # ---------------------------------------------------------------------------
-version         = "2.1.1"
+version         = "2.1.2"
 # MUST equal canon.lock [canon.artifacts].criteria.sha256
 criteria_sha256 = "6a5aa8857bd0d0d58ef48827938ca17c251b6b854dacf59d306388d61694d82a"
 # MUST equal canon.lock [canon.artifacts].gates.sha256

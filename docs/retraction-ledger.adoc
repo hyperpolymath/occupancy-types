@@ -44,6 +44,19 @@ requested). Blocked ≠ retracted: no claim has been withdrawn.
 | R1 Piece 3 (proof/tooling)
 |===
 
+== Resolved CI-lane blocker
+
+[cols="1,2,2,1"]
+|===
+| Date resolved | What is wired | Receipt / current status | Rung
+
+| 2026-10-04; expanded 2026-11-01
+| The Session IR checker now has a hosted lane. It is configured to run the
+  current 16-row manifest, including the two W2.2 separation fixtures.
+| `.github/workflows/session-ir.yml`; current Julia CI receipt pending at handover.
+| R0-B Phase 1
+|===
+
 == Blocked / fixture requests
 
 [cols="1,2,2,1"]
@@ -66,8 +79,9 @@ Full tables live in the session report (`docs/reports/`); per-rung state:
 |===
 | Rung | Kill status | Note
 
-| R0-B Phase 0/1 (Session IR) | not fired | kill-test audited mechanically
-  (`scripts/check.sh`); 16/16 examples green; steps ≤ grade on every run
+| R0-B Phase 0/1 (Session IR) | not fired in prior run | kill-test audited mechanically;
+  the pre-port Python runner passed the 16-row manifest; the current Julia CI
+  receipt for that expanded manifest is pending
 | R0-B Piece 2 (Idris spike) | not fired | local Idris 2 v0.7.0 harness green;
   hosted job remains advisory until its first green run
 | R1 (stackcert) | open | core and CLI fixtures pass locally; Zephyr ground-truth

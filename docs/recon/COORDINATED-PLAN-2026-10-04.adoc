@@ -24,7 +24,7 @@ open keystones*, _(W4) run the occupancy rungs through their own kill gates_, *(
 consumers so the work has external standing**. Research ambition is capped deliberately: the
 plan's job is to make the boundary between _established_ and _open_ impossible to misread.
 
-=== Principles (non-negotiable, because these are the estate's credibility)
+=== Principles (non-negotiable, because they are the estate's credibility)
 
 . _Receipts over claims._ A result is [RAN] (command + output), [CI] (run id + commit), [DOC]
    (dated author run), or it is _not established_. Upgrading [DOC]→[CI] is the cheapest work in
@@ -210,7 +210,7 @@ _Horizon 3 — beyond (research + external):_ W3.3, W3.4; W4.4 decision, then R3
 W5.4–W5.6; W5.7/W5.8.
 *Outcome: external standing, or an honest narrowing — the estate's own decision policy on the
 identity claim (echo-types' roadmap: *"if it is refuted, narrow honestly… or stop the identity
-claim and retain the suite as Agda exposition"*)._
+claim and retain the suite as Agda exposition"_)._
 
 '''
 
@@ -365,4 +365,3 @@ Falsifiable, in order of cheapness:
 . _No state file contradicts its repo's receipts_ (W2.7). This is the cheapest measure of
    estate coherence, and today three fail it.
 
-'''

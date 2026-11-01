@@ -1,0 +1,4 @@
+name: occupancy-types
+include: src
+depend: resource-algebra
+flags: --safe --without-K
