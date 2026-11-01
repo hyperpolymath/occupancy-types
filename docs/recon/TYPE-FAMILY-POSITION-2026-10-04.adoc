@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: CC-BY-SA-4.0
+// SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 = Type-family position — deep recon
 
 _Date of recon:_ 2026-10-04 · _Prepared in:_ `occupancy-types` @ `arena/01a1087c-occupancy-types`

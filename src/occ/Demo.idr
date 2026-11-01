@@ -1,7 +1,7 @@
 -- SPDX-License-Identifier: MPL-2.0
 -- SPDX-FileCopyrightText: 2026 Jonathan D.A. Jewell (hyperpolymath)
 -- Demo — canonical examples for the Occ spike (ULTRAPLAN R0-B, Piece 2).
--- UNVERIFIED without idris2 on PATH; see README.adoc.  %default total.
+-- Locally checked with Idris 2 v0.7.0; see README.adoc for the receipt.
 
 module Demo
 

@@ -1,0 +1,15 @@
+(* SPDX-License-Identifier: MPL-2.0 *)
+(* accept_pair_drop_send_recv.sir — the memory-only pair-drop witness with
+   one send/recv round trip added. The 2-byte and 4-byte buffers stay live
+   across the communication and are then explicitly dropped.
+
+   Certified r = 2. Machine: steps = 2, peak_live = 6 bytes. *)
+letpair b1 b2 = pair (alloc 2) (alloc 4) in
+letpair ep1 ep2 = new (!Unit.End) in
+let _ = send ep1 unit in
+let _ = recv ep2 in
+let _ = close ep1 in
+let _ = close ep2 in
+let _ = drop b1 in
+let _ = drop b2 in
+unit

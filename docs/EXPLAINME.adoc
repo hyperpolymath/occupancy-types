@@ -10,27 +10,30 @@ This file explains how the key template claims map to real files.
 
 = occupancy-types — claims to files
 
-Project claims (ULTRAPLAN R0-B + R1). Receipts taxonomy: *TESTED* (command
-run in the work environment, output recorded in the session report),
-*UNVERIFIED* (code + exact commands, toolchain absent — fixture request in
-`docs/retraction-ledger.adoc`), *CONJECTURE* (argued, not yet checked).
+Project claims (ULTRAPLAN R0-B + R1). Receipts taxonomy: *TESTED* (command,
+toolchain/version, and result recorded here), *UNVERIFIED* (code + exact
+command; execution or an independent fixture is still pending), *CONJECTURE*
+(argued, not yet checked).
 
 == C1. The grade r in Γ ⊢ e : A \| r is a worst-case communication-step bound
 
-Status: *TESTED*.
+Status: *TESTED* under the pre-port Python reference runner for all 16
+manifest fixtures; the current Julia runner is wired to the same manifest, with
+its expanded-fixture CI receipt pending.
 
-* Checker: `src/session_ir/checker.py` (six rule shapes over
-  `src/session_ir/syntax.py:MaxPlus`).
-* Stepper: `src/session_ir/machine.py` counts steps on the real reduction;
+* Checker: `src/julia/src/Checker.jl` (six rule shapes over the max-plus
+  operations in `src/julia/src/Syntax.jl`).
+* Stepper: `src/julia/src/Machine.jl` counts steps on the real reduction and
   asserts `steps ≤ r`.
-* Evidence: `examples/session_ir/manifest.json` — 14/14 green;
-  `accept_choice_max.sir` certifies 5 and measures 4 (strict);
-  `accept_choice_expensive.sir` certifies 6 and measures 6 (tight).
-* Command: `PYTHONPATH=src python3 -m session_ir test examples/session_ir/manifest.json`
+* Evidence: `examples/session_ir/manifest.json` — 16 fixtures; `accept_choice_max.sir`
+  certifies 5 and measures 4 (strict), while `accept_choice_expensive.sir`
+  certifies 6 and measures 6 (tight).
+* Current command: `julia --project=src/julia src/julia/bin/sessionir.jl test examples/session_ir/manifest.json`.
 
 == C2. Linear uniqueness rejects real memory/protocol bugs
 
-Status: *TESTED*.
+Status: *TESTED* for the original rejection controls in the Julia/Python port
+comparison; the expanded 16-row manifest's Julia CI receipt is pending.
 
 * Seven expected-rejection controls, each pinning an error class:
   double-send, drop-then-send (use-after-drop), protocol mismatch,
@@ -40,57 +43,53 @@ Status: *TESTED*.
 
 == C3. The Phase 0 kill test passes as written
 
-Status: *TESTED* (mechanically).
+Status: *TESTED* by the prior local audit; the current Julia lane reruns it
+and its hosted receipt is pending.
 
 * `docs/OPERATIONAL-MODEL.md` §2.1: four sentences explaining ⊕ = max,
   ⊗ = +, banned word absent.
-* Command: `bash scripts/check.sh` stage 2 audits the block (sentence count
-  + banned-word grep).
+* Command: `julia scripts/kill-test-audit.jl` (also run by
+  `scripts/check.sh`) audits the block (sentence count + banned-word grep).
 
 == C4. Occ: static occupancy/peak indices + linear handles program a bounded buffer
 
-Status: *UNVERIFIED* (no `idris2` in the work environment).
+Status: *TESTED locally* with Idris 2 v0.7.0 (2026-10-05).
 
 * Code: `src/occ/Occ.idr` (Occ monad, `WithAlloc` linear binder, capacity
   `LTE (S n) C`, bounded FIFO `Queue k n`), `src/occ/Demo.idr`
   (`producerConsumer : Occ 0 2 2 (Queue 2 2)` — static peak = K = 2).
-* Expected-rejection controls: `src/occ/Reject{id,Leak,OverCapacity,UseAfterFree}.idr`.
-* Kill question answered provisionally in `src/occ/README.adoc`
-  (CONJECTURE: constant grades tolerable and tight on this example).
-* Commands: `cd src/occ && idris2 --check Occ.idr && idris2 --check Demo.idr`;
-  `bash src/occ/check-rejections.sh`.
-* *CI path (added 2026-10-04):* the `occ-idris` job in
-  `.github/workflows/proofs.yml` builds Idris 2 v0.7.0 over Chez Scheme and
-  runs the same script. It is `continue-on-error: true` *because this rung has
-  never executed anywhere* — a red result is information, not a regression.
-  Remove that flag after the first green run on `main`.
+* Expected-rejection controls: `src/occ/RejectDoubleFree.idr`,
+  `RejectLeak.idr`, `RejectOverCapacity.idr`, and `RejectUseAfterFree.idr`.
+* Local result: both accepts compile; all four expected-rejection controls
+  reject. `src/occ/README.adoc` records the toolchain and harness receipt.
+* The kill question is supported on this example only; this does not prove
+  general adequacy of constant grades. The hosted Idris job remains advisory
+  until its first green CI run.
+* Command: `bash src/occ/check-rejections.sh`.
 
 == C5. stackcert `check` is sound: accepted certificates bound every call path
 
-Status: *UNVERIFIED* (no `lean` in the work environment).
+Status: *TESTED locally* with source-built Lean 4.15.0 / Lake 5.0.0
+(2026-10-05).
 
 * Theorem: `StackcertCore.cert_sound` in `src/stackcert/StackcertCore.lean`
   (zero imports; no holes; no Classical.choice).
-* `#print axioms` footprint: *not yet available*. After the first successful
-  `lean StackcertCore.lean` run, the exact output of
-  `#print axioms StackcertCore.cert_sound` will be pasted here verbatim.
-  Expected form: `'StackcertCore.cert_sound' depends on axioms: [...]`
-  with an empty list — this expectation is CONJECTURE until pasted.
-* Commands: `bash tests/run_stackcert.sh` (core + fixture + four negative
-  controls: decremented bound, undeclared recursion, unresolved indirect,
-  undeclared cycle).
-* *CI path (added 2026-10-04):* the `stackcert` job in
-  `.github/workflows/proofs.yml` installs elan and runs the same harness.
-  Until 2026-10-04 the harness could not have passed even with Lean installed:
-  the repository carried no `lakefile.toml` and no `lean-toolchain`, so
-  `lake build` and `lake exe stackcert` had nothing to act on. Both are now
-  committed, and the version is pinned rather than floating (compare
-  echo-types#322, where an unpinned `apt-get install agda` lets the prover
-  under the proofs change without a commit).
-* *When the run is green,* paste the job's `#print axioms` output verbatim in
-  place of the expectation above, and record the run id. Not before: a
-  predicted footprint is a conjecture, and the point of this repository is
-  that conjectures are labelled.
+* Exact `#print axioms` receipt:
+
+[source,text]
+----
+'StackcertCore.cert_sound' does not depend on any axioms
+----
+
+* `bash tests/run_stackcert.sh`: PASS — core compile and Lake build pass;
+  `probe.*` is accepted for 6 functions; `cert-decremented` and
+  `undeclared-recursion` reject with `E_CERT`, `unresolved-indirect` rejects
+  with `E_INDIRECT`, and `undeclared-cycle` rejects with `E_CYCLE`.
+* `bash scripts/check-proofs.sh lean4`: PASS; the gated `ApiTypes.lean`
+  manifest entry compiles under Lean 4.15.0.
+* Scope: the parser/CLI is fixture-tested but is outside the formal theorem.
+  This local source-built receipt is not a hosted CI run or a Zephyr target
+  measurement; the R1 fixture request remains pending.
 
 == C6. Fixtures are real compiler output
 
@@ -102,6 +101,49 @@ Status: *TESTED* (provenance), fixture measurements *BLOCKED*.
 * Zephyr ground truth (painted-stack HWM on qemu_cortex_m3) is a fixture
   request: exact commands in `src/stackcert/README.adoc`; nothing measured
   until it runs.
+
+== C7. Communication cost and occupancy state are distinct observations
+
+Status: *TESTED locally* for the algebraic Lean witness and the 16-row manifest
+under the pre-port Python runner; hosted Lean-manifest and current Julia receipts
+are pending.
+
+* The manifest has a same-cost/different-state pair: `accept_unit.sir` and
+  `accept_pair_drop.sir` both certify communication grade 0 and measure 0
+  communication steps, while their operational `peak_live` readings are 0
+  and 6 bytes respectively.
+* It also has a same-state/different-cost pair:
+  `accept_pair_drop.sir` and `accept_pair_drop_send_recv.sir` both measure
+  `peak_live = 6` bytes, while their certified grades are 0 and 2 (measured
+  communication steps 0 and 2).
+* Formal receipt: `verification/proofs/lean4/CostStateSeparation.lean`
+  defines additive communication cost alongside the HWM footprint composition
+  `(p₁,n₁)·(p₂,n₂) = (max(p₁,n₁+p₂), n₁+n₂)`. It proves both witness
+  inequalities and that neither scalar observation is a function of the
+  other on the model; `#print axioms` reports no axioms.
+* Historical fixture command (before the Python implementation was removed):
+  `PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python3 -m session_ir test
+  examples/session_ir/manifest.json` — PASS, 16/16. Current Julia command is
+  listed under C1; its expanded-manifest CI result is pending.
+* Lean command: `bash scripts/check-proofs.sh lean4` — PASS with source-built
+  Lean 4.15.0-pre. `.github/workflows/lean4-manifest.yml` now reruns the
+  Lean manifest on pinned Lean 4.15.0; that hosted receipt is pending.
+* Scope: this is a concrete observational separation and a small algebraic
+  witness, not a mechanized soundness link between the Julia checker/stepper
+  and Lean, nor a claim that Session IR v0 grades live memory. In v0, live
+  bytes are measured operationally; HWM grading remains planned for R2–R3.
+* Mathesis classification: no grade is assigned. Grade 3 requires a locally
+  checked Agda formulation; this standalone Lean file is not one. No
+  theorem-specific correspondence to an Agda witness has been established for
+  Grade 2i, and there is no Grade 1 AXLE API verification receipt. Mathesis'
+  current occupancy-types row is repository-level (snapshot `pushed_at`
+  2026-10-18), with no theorem-level entry; its census uses textual file,
+  declaration, and hole scans rather than kernel verification. This
+  agent-produced artifact is not independent corroboration.
+* Before any future Grade 3 claim for this result, a theorem-level Agda
+  formulation would need its own local check, exact toolchain/commit
+  provenance, and axiom/library record, followed by the policy-required
+  Mathesis initial audit. This Lean receipt does not provide those items.
 
 = RSR template claims
 
