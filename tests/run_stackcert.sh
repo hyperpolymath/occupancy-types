@@ -42,11 +42,11 @@ echo "PASS (axiom footprint clean)"
 echo "$lean_out" | tail -3
 
 echo "=== 2. lake build ==="
-lake build >/dev/null || { echo "FAIL: lake build"; exit 1; }
+lake --quiet build >/dev/null || { echo "FAIL: lake build"; exit 1; }
 echo "PASS"
 
 echo "=== 3. positive fixture (must be accepted) ==="
-run() { lake exe stackcert --ci "$1" --su "$2" --ann "$3" --cert "$4"; }
+run() { lake --quiet exe stackcert --ci "$1" --su "$2" --ann "$3" --cert "$4"; }
 if out="$(run fixtures/probe.ci fixtures/probe.su fixtures/annotations.toml fixtures/cert.toml)"; then
   echo "PASS: $out"
 else

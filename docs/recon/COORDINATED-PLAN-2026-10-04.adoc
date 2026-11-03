@@ -337,7 +337,7 @@ on a claim that was not checked. Blocked ≠ retracted; blocked ≠ passed.
 gh api "repos/hyperpolymath/occupancy-types/actions/runs?per_page=100" \
   --jq '[.workflow_runs[].conclusion] | group_by(.) | map({(.[0]): length}) | add'
 
-# R1 precisely: did a run actually execute any job?
+# Per-run diagnostic only. R1 counts required contexts (§6.1), not runs.
 gh api "repos/hyperpolymath/occupancy-types/actions/runs/<run-id>/jobs" --jq '.total_count'
 ----
 

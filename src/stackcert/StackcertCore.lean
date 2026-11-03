@@ -30,8 +30,10 @@ is <= the certificate of the start function.  Real stack usage with self-
 recursion bounded by the annotation is bounded by this inflated cost, since
 each visit to v contributes at most (d+1) frames of size frame v.
 
-Nothing here is reported as verified until the toolchain command above has
-run; see README.adoc for status.
+Locally checked with source-built Lean 4.15.0 on 2026-10-05.  The
+`#print axioms` receipt reports no axioms for `cert_sound`; see README.adoc for
+the bounded scope of that local result.  It is not a hosted CI receipt or a
+Zephyr measurement.
 -/
 
 namespace StackcertCore
@@ -42,10 +44,7 @@ def allb {α : Type} (p : α → Bool) : List α → Bool
   | []      => true
   | x :: xs => p x && allb p xs
 
-def memB [DecidableEq Fn] (x : Fn) (l : List Fn) : Bool :=
-  l.any (fun y => decide (y = x))
-
-theorem and_true : ∀ {a b : Bool}, a && b = true → a = true ∧ b = true := by
+theorem and_true : ∀ {a b : Bool}, (a && b) = true → a = true ∧ b = true := by
   intro a b h
   cases a with
   | false => cases h
@@ -54,6 +53,18 @@ theorem and_true : ∀ {a b : Bool}, a && b = true → a = true ∧ b = true := 
     | false => cases h
     | true  => exact ⟨rfl, rfl⟩
 
+theorem or_true : ∀ {a b : Bool}, (a || b) = true → a = true ∨ b = true := by
+  intro a b h
+  cases a with
+  | false =>
+    cases b with
+    | false => cases h
+    | true => exact Or.inr rfl
+  | true => exact Or.inl rfl
+
+def memB [DecidableEq Fn] (x : Fn) (l : List Fn) : Bool :=
+  l.any (fun y => decide (y = x))
+
 theorem allb_mem {α : Type} (p : α → Bool) :
     ∀ (l : List α) (x : α), allb p l = true → x ∈ l → p x = true := by
   intro l
@@ -61,30 +72,31 @@ theorem allb_mem {α : Type} (p : α → Bool) :
   | nil => intro x hx hm; cases hm
   | cons y ys ih =>
     intro x hx hm
-    have hp : p y = true ∧ allb p ys = true := and_true hx
+    have hAnd : (p y && allb p ys) = true := by
+      change (p y && allb p ys) = true at hx
+      exact hx
+    have hp : p y = true ∧ allb p ys = true := and_true hAnd
     cases hm with
     | head _ => exact hp.1
-    | tail _ _ hm' => exact ih x hp.2 hm'
+    | tail _ hm' => exact ih x hp.2 hm'
 
 theorem memB_sound [DecidableEq Fn] :
     ∀ (l : List Fn) (x : Fn), memB x l = true → x ∈ l := by
   intro l
   induction l with
-  | nil => intro x hx; simp [memB] at hx
+  | nil => intro x hx; change false = true at hx; cases hx
   | cons y ys ih =>
     intro x hx
-    have hy : (decide (y = x) || memB x ys) = true := by
-      simpa [memB] using hx
-    cases hyx : decide (y = x) with
-    | true =>
+    have hOr : (decide (y = x) || memB x ys) = true := by
+      change (decide (y = x) || memB x ys) = true at hx
+      exact hx
+    have hparts : decide (y = x) = true ∨ memB x ys = true := or_true hOr
+    cases hparts with
+    | inl hyx =>
       have heq : y = x := of_decide_eq_true hyx
       rw [← heq]
       exact List.Mem.head ys
-    | false =>
-      have hrest : memB x ys = true := by
-        simp [hyx] at hy
-        exact hy
-      exact List.Mem.tail y ys (ih x hrest)
+    | inr hrest => exact List.Mem.tail y (ih x hrest)
 
 /-! ## Model -/
 
@@ -120,6 +132,21 @@ def maxExcept (cert : Fn → Nat) (v : Fn) : List Fn → Nat
   | u :: us => if u = v then maxExcept cert v us
                else max (cert u) (maxExcept cert v us)
 
+/-- Explicit max bounds avoid the extensionality-based library lemmas. -/
+theorem nat_le_max_left (a b : Nat) : a ≤ max a b := by
+  by_cases h : a ≤ b
+  · rw [Nat.max_def, if_pos h]
+    exact h
+  · rw [Nat.max_def, if_neg h]
+    exact Nat.le_refl a
+
+theorem nat_le_max_right (a b : Nat) : b ≤ max a b := by
+  by_cases h : a ≤ b
+  · rw [Nat.max_def, if_pos h]
+    exact Nat.le_refl b
+  · rw [Nat.max_def, if_neg h]
+    exact (Nat.le_total a b).resolve_left h
+
 theorem cert_le_maxExcept (cert : Fn → Nat) (v : Fn) :
     ∀ (l : List Fn) (u : Fn), u ≠ v → u ∈ l → cert u ≤ maxExcept cert v l := by
   intro l
@@ -137,8 +164,8 @@ theorem cert_le_maxExcept (cert : Fn → Nat) (v : Fn) :
         exact absurd hyv hne
       else
         rw [if_neg hyv]
-        exact Nat.le_max_left _ _
-    | tail _ _ hm' =>
+        exact nat_le_max_left _ _
+    | tail _ hm' =>
       show cert u ≤ (if y = v then maxExcept cert v ys
                      else max (cert y) (maxExcept cert v ys))
       if hyv : y = v then
@@ -146,7 +173,7 @@ theorem cert_le_maxExcept (cert : Fn → Nat) (v : Fn) :
         exact ih u hne hm'
       else
         rw [if_neg hyv]
-        exact Nat.le_trans (ih u hne hm') (Nat.le_max_right _ _)
+        exact Nat.le_trans (ih u hne hm') (nat_le_max_right _ _)
 
 /-- The certificate rule at v: inflated frame plus the worst certificate of a
 non-self callee is covered by cert v.  (Mission rule exactly when there is no
@@ -177,18 +204,21 @@ inductive Path (g : CallGraph Fn) : Fn → Type where
 
 /-- Stack cost of a path: sum of inflated frames along the way. -/
 def cost (g : CallGraph Fn) (a : Annot Fn) : {v : Fn} → Path g v → Nat
-  | v, Path.leaf _       => iframe g a v
-  | v, Path.step _ u _ _ p => iframe g a v + cost g a p
+  | v, Path.leaf _         => iframe g a v
+  | v, Path.step _ _ _ _ p => iframe g a v + cost g a p
 
 /-! ## Soundness -/
 
 theorem cert_sound (g : CallGraph Fn) (a : Annot Fn) (cert : Fn → Nat)
     (h : check g a cert = true) :
-    ∀ (v : Fn), v ∈ g.fns → ∀ (p : Path g v), cost g a v p ≤ cert v := by
+    ∀ (v : Fn), v ∈ g.fns → ∀ (p : Path g v), cost g a p ≤ cert v := by
   have hsplit :
       allb (selfOk g a) g.fns = true
       ∧ allb (rule g a cert) g.fns = true
       ∧ allb (closed g) g.fns = true := by
+    change ((allb (selfOk g a) g.fns
+      && allb (rule g a cert) g.fns)
+      && allb (closed g) g.fns) = true at h
     have h1 := and_true h
     have h2 := and_true h1.1
     exact ⟨h2.1, h2.2, h1.2⟩

@@ -4,10 +4,11 @@
 :toc:
 :icons: font
 
-Status: *UNVERIFIED in the work environment that authored it* (no `idris2` on
-PATH there). Receipts below are of two kinds only: (a) what is claimed and
-where the code is, (b) the exact commands that would verify it. Nothing here
-is reported as proven until those commands run green.
+Status: *LOCALLY VERIFIED with Idris 2 v0.7.0 (2026-10-05)*. The authoring
+environment lacked `idris2` on PATH; the toolchain has since been built from
+source locally. `bash src/occ/check-rejections.sh` compiles both accepted
+modules and rejects all four controls. The GitHub job remains advisory until
+its first green CI run; this local receipt does not change that workflow gate.
 
 == The spike
 
@@ -37,10 +38,11 @@ Occ : (pre, post, peak : Nat) -> Type -> Type
 
 == Kill question (ULTRAPLAN R0-B): are constant grades tolerable and tight?
 
-*Provisional answer: yes on this example — labelled CONJECTURE until the
-commands below run.*
+*Local result: yes on this example* (verified with Idris 2 v0.7.0; see the
+receipt below). This confirms the written example and controls, not the general
+adequacy of constant grades for all programs.
 
-Evidence in the code (each checkable by the elaborator once `idris2` exists):
+Evidence in the code, checked locally with Idris 2 v0.7.0:
 
 1. *Tolerable* — `producerConsumer` is written entirely with literal indices
    (`Occ 0 2 2 (Queue 2 2)`). No grade anywhere in `Occ.idr`/`Demo.idr` is
@@ -58,12 +60,11 @@ Evidence in the code (each checkable by the elaborator once `idris2` exists):
 What would falsify this answer (pre-registered): if making `producerConsumer`
 typecheck required a grade depending on message values, on queue contents, or
 on any runtime quantity — i.e. if the indices had to track anything finer than
-a numeral counter. The mission's kill criterion ("non-trivial only with
-data-dependent grades ⇒ stop, ledger") is therefore *not fired by the code as
-written*; the residual risk is that the code as written does not compile,
-which the commands below decide. If it fails in a way that can only be fixed
-by data-dependent grades, the kill criterion fires and the ledger entry is
-written — no re-scoping.
+a numeral counter. The local Idris 2 v0.7.0 run compiled the example without
+such grades, so the kill criterion ("non-trivial only with data-dependent
+grades ⇒ stop, ledger") is *not fired for this example*. This is not evidence
+that every protocol can use constant grades; any future counterexample is still
+a stop-and-record signal, not a reason to re-scope.
 
 == Expected-rejection controls
 
@@ -81,7 +82,11 @@ Controls 2 and 4 are the interesting pair: they isolate the QTT multiplicity
 discipline from the occupancy indices — each is accepted by one guard and
 rejected by the other.
 
-== Verification commands (the receipts that do not yet exist)
+== Verification receipt (2026-10-05)
+
+Toolchain: `Idris 2, version 0.7.0`.
+
+Result: `check-rejections: OK — accepts compile, all controls rejected`.
 
 [source,bash]
 ----
@@ -108,8 +113,8 @@ Record the toolchain (`idris2 --version`) with any result, per ULTRAPLAN §6.1.
 == Where this sits
 
 * Plan: `ULTRAPLAN.md` §4 R0-B. · Operational model: `docs/OPERATIONAL-MODEL.md`.
-* Not registered in `verification/proofs/idris2/MANIFEST` yet: `gated` there
-  means "must compile", and this environment cannot run `idris2`. Registering
-  unverified code as gated would be an unbacked claim. Next task once the
-  toolchain exists: run the commands, register `Occ.idr` + `Demo.idr` as
-  `gated`.
+* Not listed in `verification/proofs/idris2/MANIFEST` (that manifest covers
+  modules under `verification/proofs/idris2`). This spike has its own direct
+  harness and the `proofs.yml` job, so it is checked without claiming a
+  manifest entry. The local green receipt does not yet promote the hosted job
+  from advisory.
