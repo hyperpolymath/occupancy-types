@@ -113,6 +113,10 @@ predecessors did.
 | yes
 | REUSE licence texts, dual-licence model (code MPL-2.0 / docs CC-BY-SA-4.0)
 
+| `PROOF-STATUS.adoc`
+| yes
+| repo-local proof inventory with explicit evidence status
+
 | `README.adoc`
 | yes
 | -
@@ -156,6 +160,10 @@ predecessors did.
 | `mise.toml`
 | yes
 | pinned toolchains
+
+| `occupancy-types.agda-lib`
+| yes
+| Agda library descriptor for the occupancy-types proof modules
 
 | `rsr-template-repo_chora.deed`
 | yes
