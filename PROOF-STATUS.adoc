@@ -1,9 +1,12 @@
 // SPDX-License-Identifier: CC-BY-SA-4.0
 = occupancy-types — Proof Status
-:revdate: 2026-10-12
+:revdate: 2026-11-09
 
-Statuses: PROVEN / TESTED / ASSUMED / DESIGNED / OPEN. All modules are
-`--safe --without-K --no-libraries`, `--double-check`, no postulates.
+Statuses are the closed vocabulary of PROOF-POLICY §5 (`metadatastician/standards`
+`3-practice/PROOF-POLICY.adoc`): PROVEN / PROVEN-WITH-AXIOMS / TESTED / ASSUMED /
+OPEN. Every module checks under the §2.1 invocation,
+`--safe --without-K --cubical-compatible`, with `--no-libraries
+--ignore-interfaces --double-check` (`scripts/check-agda.sh`); no postulates.
 Sibling: resource-algebra (same kernel), pinned in `scripts/fetch-siblings.sh`.
 
 == The occupancy algebra
@@ -12,7 +15,7 @@ Sibling: resource-algebra (same kernel), pinned in `scripts/fetch-siblings.sh`.
 |===
 | ID | Claim | Status
 | O-1 | The high-water-mark algebra (peak, drift, drift ≤ peak; sequence = `max (peak a) (drift a + peak b)`) is a resource algebra and a dioid; it has no annihilating zero | PROVEN in resource-algebra (`Instances/HWM.agda`); this repo adopts it as its occupancy algebra
-| O-2 | It is this repo's own R2–R3 definition | DESIGNED — adopted today from the resource-algebra proposal; the operational model's "live bytes" reading is its intended semantics; a signed drift (terms that consume more than they allocate) is the first extension
+| O-2 | It is this repo's own R2–R3 definition | ASSUMED — a definition this repo adopts (`Reclaim.agda` and `Witness.agda` import `Instances.HWM`), not a theorem. That the operational model's "live bytes" reading is its semantics is the v0 → typed bridge, OPEN (see Open); a signed drift (terms that consume more than they allocate) is the first extension
 |===
 
 == Reclamation at a cut (Reclaim.agda)
@@ -25,7 +28,7 @@ Sibling: resource-algebra (same kernel), pinned in `scripts/fetch-siblings.sh`.
 | R-3 | *Occupancy ≤ cost*: `peak (xs ++ ys) ≤ peak xs + peak ys` | PROVEN (`occupancy≤cost`, `protocol-occupancy≤cost`)
 | R-4 | Equality iff nothing is reclaimed: with drift = peak the occupancy is the cost (`no-reclaim`); with drift < peak and a non-trivial suffix it is strictly less (`reclaimed`) | PROVEN
 | R-5 | Two readings of one protocol: occupancy 4, cost 7 (`Witness`) | PROVEN
-| R-6 | Reading occupancy as cost, or drift as peak, is refused (`CostIsOccupancy`, `DriftIsPeak`) | PROVEN
+| R-6 | Reading occupancy as cost, or drift as peak, is refused (`CostIsOccupancy`, `DriftIsPeak`) | TESTED (`tests/reject/`: each is refused at its invalid declaration by `scripts/check-agda.sh`)
 |===
 
 == Separation from siblings (criterion 2 of the family bar)
@@ -52,4 +55,34 @@ threads (choreographic-types A-3), occupancy has two theorems of its own.
   typed bridge).
 * TYPE-CONNECTIONS registration (rows supplied in resource-algebra's
   cross-repo notes).
-* CI: DESIGNED until first green run on the pinned prover.
+* CI: `proofs.yml` job `agda` runs `scripts/check-agda.sh` on Agda 2.6.4.3
+  (added 2026-11-09). Before, only typed-wasm's kernel gate checked these
+  proofs, at typed-wasm's pin and Agda 2.6.3.
+
+== Proof Witness Grades (PROOF-POLICY §8)
+
+R-1 to R-5 are *theory* (PROOF-POLICY §1): Agda is the source, and §2 owes
+a Rocq recheck and a Lean recheck for each. R-6 is a refusal (TESTED), not
+a theorem, and is not graded.
+
+* *Agda leg.* Route: source. Invocation: `scripts/check-agda.sh`, i.e.
+  `agda --safe --without-K --cubical-compatible --no-libraries
+  --ignore-interfaces --double-check -i src -i <resource-algebra>/src`, on
+  Agda 2.6.4.3 (`proofs.yml`, job `agda`). No standard library. Import cone:
+  `src/OccupancyTypes/` and resource-algebra's `src/` at the commit
+  `scripts/fetch-siblings.sh` pins. Axioms (§8.4.6): `--safe` refuses
+  `postulate`, and `scripts/check-agda.sh` also scans the cone for
+  `postulate` outside comments, so the postulate count is 0. The receipt is
+  the `proofs.yml` run on the commit in question.
+* *Rocq leg.* OPEN for R-1 to R-5: not started.
+* *Lean leg.* OPEN for R-1 to R-5: not started. The Lean files here
+  (`src/stackcert/`, `verification/proofs/lean4/CostStateSeparation.lean`)
+  state other theorems (R1 stackcert, the W2.2 separation); none is a
+  restatement of R-1 to R-5, so none is their Lean leg (§3).
+
+Grade, derived as §8.4 requires: R-1 to R-5 are `PWG-3` at a commit whose
+`proofs.yml` job `agda` passed, and `ungraded` at any commit without that
+receipt. Checks before 2026-11-09 used `--safe --without-K` without
+`--cubical-compatible`, and ran only in typed-wasm; §2.1 counts them as
+historical evidence. None is `PWG-2i` or better, and none is
+`+foundation-diverse`.
