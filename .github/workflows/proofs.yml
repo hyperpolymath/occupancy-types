@@ -33,6 +33,8 @@ on:
       - 'src/OccupancyTypes/**'
       - 'tests/reject/**'
       - 'scripts/check-agda.sh'
+      - 'scripts/scan-postulates.pl'
+      - 'tests/scan_postulates_test.sh'
       - 'scripts/fetch-siblings.sh'
       - 'occupancy-types.agda-lib'
       - 'src/stackcert/**'
@@ -44,6 +46,8 @@ on:
       - 'src/OccupancyTypes/**'
       - 'tests/reject/**'
       - 'scripts/check-agda.sh'
+      - 'scripts/scan-postulates.pl'
+      - 'tests/scan_postulates_test.sh'
       - 'scripts/fetch-siblings.sh'
       - 'occupancy-types.agda-lib'
       - 'src/stackcert/**'
@@ -79,6 +83,8 @@ jobs:
           persist-credentials: false
       - name: Verify the checked Agda version
         run: test "$(agda --version)" = 'Agda version 2.6.4.3'
+      - name: Postulate scanner tests
+        run: bash tests/scan_postulates_test.sh
       - name: Core proofs and expected rejections (fetches resource-algebra at its pin)
         run: bash scripts/check-agda.sh
 
