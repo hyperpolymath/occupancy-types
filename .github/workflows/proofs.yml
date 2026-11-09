@@ -13,6 +13,8 @@
 #   stackcert — Lean 4, toolchain pinned by src/stackcert/lean-toolchain.
 #               `bash tests/run_stackcert.sh` = core `#print axioms cert_sound`
 #               + `lake build` + positive fixture + four negative controls.
+#   agda      — the core Agda proofs (R-1..R-6) and expected rejections,
+#               `bash scripts/check-agda.sh` on Agda 2.6.4.3.
 #   occ-idris — Idris 2 v0.7.0 built from source over Chez Scheme.
 #               `bash src/occ/check-rejections.sh` = the accepts compile and
 #               the four expected-rejection controls are rejected.
@@ -21,19 +23,35 @@
 # because this repository's Actions allow-list posture is under investigation
 # (issue #6) and a step referencing a non-allow-listed action dies at startup
 # with jobs=0 — a gate that cannot start must not be trusted to say "green".
-name: Proofs (R0-B Occ, R1 stackcert)
+name: Proofs (Agda core, R0-B Occ, R1 stackcert)
 
 on:
   workflow_dispatch:
   push:
     branches: [main, master]
     paths:
+      - 'src/OccupancyTypes/**'
+      - 'tests/reject/**'
+      - 'scripts/check-agda.sh'
+      - 'scripts/scan-postulates.pl'
+      - 'tests/scan_postulates_test.sh'
+      - 'tests/check_agda_find_failure_test.sh'
+      - 'scripts/fetch-siblings.sh'
+      - 'occupancy-types.agda-lib'
       - 'src/stackcert/**'
       - 'src/occ/**'
       - 'tests/run_stackcert.sh'
       - '.github/workflows/proofs.yml'
   pull_request:
     paths:
+      - 'src/OccupancyTypes/**'
+      - 'tests/reject/**'
+      - 'scripts/check-agda.sh'
+      - 'scripts/scan-postulates.pl'
+      - 'tests/scan_postulates_test.sh'
+      - 'tests/check_agda_find_failure_test.sh'
+      - 'scripts/fetch-siblings.sh'
+      - 'occupancy-types.agda-lib'
       - 'src/stackcert/**'
       - 'src/occ/**'
       - 'tests/run_stackcert.sh'
@@ -48,6 +66,32 @@ permissions:
   contents: read
 
 jobs:
+  agda:
+    name: Agda core proofs and expected rejections
+    # The reclamation law (R-1..R-6) had no CI here: typed-wasm's kernel
+    # gate was the only runner. Same prover as resource-algebra's proofs.yml:
+    # the Debian agda-bin package at the pinned version, under the
+    # PROOF-POLICY §2.1 invocation in scripts/check-agda.sh.
+    runs-on: ubuntu-latest
+    container: debian:trixie-slim
+    timeout-minutes: 30
+    steps:
+      - name: Install the pinned prover
+        run: |
+          apt-get update
+          apt-get install --no-install-recommends -y ca-certificates git agda-bin=2.6.4.3-1+b2
+      - uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
+      - name: Verify the checked Agda version
+        run: test "$(agda --version)" = 'Agda version 2.6.4.3'
+      - name: Postulate scanner tests
+        run: bash tests/scan_postulates_test.sh
+      - name: Gate stops when find cannot list the import cone
+        run: bash tests/check_agda_find_failure_test.sh
+      - name: Core proofs and expected rejections (fetches resource-algebra at its pin)
+        run: bash scripts/check-agda.sh
+
   stackcert:
     name: R1 stackcert (Lean 4)
     runs-on: ubuntu-latest

@@ -1,4 +1,4 @@
 name: occupancy-types
 include: src
 depend: resource-algebra
-flags: --safe --without-K
+flags: --safe --without-K --cubical-compatible
