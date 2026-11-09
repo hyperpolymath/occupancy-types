@@ -35,6 +35,7 @@ on:
       - 'scripts/check-agda.sh'
       - 'scripts/scan-postulates.pl'
       - 'tests/scan_postulates_test.sh'
+      - 'tests/check_agda_find_failure_test.sh'
       - 'scripts/fetch-siblings.sh'
       - 'occupancy-types.agda-lib'
       - 'src/stackcert/**'
@@ -48,6 +49,7 @@ on:
       - 'scripts/check-agda.sh'
       - 'scripts/scan-postulates.pl'
       - 'tests/scan_postulates_test.sh'
+      - 'tests/check_agda_find_failure_test.sh'
       - 'scripts/fetch-siblings.sh'
       - 'occupancy-types.agda-lib'
       - 'src/stackcert/**'
@@ -85,6 +87,8 @@ jobs:
         run: test "$(agda --version)" = 'Agda version 2.6.4.3'
       - name: Postulate scanner tests
         run: bash tests/scan_postulates_test.sh
+      - name: Gate stops when find cannot list the import cone
+        run: bash tests/check_agda_find_failure_test.sh
       - name: Core proofs and expected rejections (fetches resource-algebra at its pin)
         run: bash scripts/check-agda.sh
 
