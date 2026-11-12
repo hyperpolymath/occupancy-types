@@ -21,4 +21,5 @@ just = "latest"
 shellcheck = "latest"     # the shell scripts
 yq = "latest"             # scripts/kyaml-format.sh (KYAML configs)
 zig = "latest"
+julia = "1.10"             # src/julia (the Julia package); detection fix pending upstream
 trivy = "latest"          # just deps-audit
