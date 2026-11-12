@@ -1095,7 +1095,7 @@
     :last-updated "2026-11-12"
     :parent "hyperpolymath/rsr-template-repo"
     ; template tip at mint
-    :parent-pin "840ac2509f28a176fe7e2c991b909375654164dc"
+    :parent-pin "2f54c7b53cabb0b49c10a2653815e1a1ba9a730c"
     :role "minted-repo"
     :stack "unspecified"
     :direction "generated-from-core"
@@ -1104,7 +1104,7 @@
     (paths
       :added ("examples/session_ir/" "src/OccupancyTypes/" "src/julia/" "src/occ/" "src/stackcert/" "tests/reject/" ".github/workflows/lean4-manifest.yml" ".github/workflows/proofs.yml" ".github/workflows/session-ir.yml" "PROOF-STATUS.adoc" "ULTRAPLAN.md" "docs/DECISION-001-python-stepper.adoc" "docs/OPERATIONAL-MODEL.md" "docs/glossary.adoc" "docs/recon/A1-ACTIONS-RUNBOOK.adoc" "docs/recon/COORDINATED-PLAN-2026-10-04.adoc" "docs/recon/TYPE-FAMILY-POSITION-2026-10-04.adoc" "docs/recon/ULTRA-PLAN-2026-10-04.adoc" "docs/reports/session-2026-09-27.adoc" "docs/retraction-ledger.adoc" "docs/status/HYPATIA-GATE.adoc" "occupancy-types.agda-lib" "scripts/check-agda.sh" "scripts/check.sh" "scripts/fetch-siblings.sh" "scripts/kill-test-audit.jl" "scripts/scan-postulates.pl" "tests/check_agda_find_failure_test.sh" "tests/run_stackcert.sh" "tests/scan_postulates_test.sh" "verification/proofs/lean4/CostStateSeparation.lean")
       :removed ("archetypes/" "build/docs-seed/" "build/templates/" "rsr-template-repo_chora.deed")
-      :diverged ("occupancy-types_chora.deed" "docs/status/ROADMAP.adoc" "CLAUDE.md" "docs/architecture/REPOSITORY-MAP.adoc" "README.adoc" "CITATION.cff" "CHANGELOG.adoc" "LICENSE" "Justfile" ".gitignore" ".machine_readable/root-allow.txt" ".github/workflows/actions.lock" ".github/workflows/push-email-notify.yml" ".github/workflows/release.yml" ".github/workflows/sonarqube.yml" "docs/EXPLAINME.adoc" "scripts/check-no-md-in-docs.sh" "verification/proofs/idris2/MANIFEST" "verification/proofs/lean4/MANIFEST")))
+      :diverged ("occupancy-types_chora.deed" "docs/status/ROADMAP.adoc" "CLAUDE.md" "docs/architecture/REPOSITORY-MAP.adoc" "README.adoc" "CITATION.cff" "CHANGELOG.adoc" "LICENSE" "Justfile" ".gitignore" ".machine_readable/root-allow.txt" ".github/workflows/actions.lock" ".github/workflows/push-email-notify.yml" ".github/workflows/release.yml" ".github/workflows/sonarqube.yml" "docs/EXPLAINME.adoc" "scripts/check-no-md-in-docs.sh" "verification/proofs/idris2/MANIFEST" "verification/proofs/lean4/MANIFEST" "mise.toml")))
   ; provenance — what this repo was minted FROM. Written once, at mint,
   ; by build/just/repo-init.just. Tools that want "what is this repo" read
   ; the rest of the deed; tools that want "where did it come from" read this.
@@ -1112,8 +1112,8 @@
     :minted-at "2026-11-12"
     :template-repo "hyperpolymath/rsr-template-repo"
     :template-branch "main"
-    :template-commit "840ac2509f28a176fe7e2c991b909375654164dc"
-    :template-tree "a7e2cb8e1d6e868ed56f00effefb6417b396f6a7"
+    :template-commit "2f54c7b53cabb0b49c10a2653815e1a1ba9a730c"
+    :template-tree "1d693c668dd22ff03a05ba8a1b79f1ebf1577787"
     ; Contract: branches this repo is EXPECTED to carry beyond the default.
     ; Empty means default-only. A mint must never inherit template work
     ; branches (coderabbit/, chore/, bot-task or stale branches) — that is

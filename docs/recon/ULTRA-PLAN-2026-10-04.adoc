@@ -55,7 +55,6 @@ toc::[]
 | *Gate fixed:* the action-pinning gate now exits 0 for the first time
 | `node scripts/check-action-pinning.js` → *exit 0*, "all action refs are pinned".
   (Two refs were unpinned on `main` since they were introduced; see A8.)
-|===
 
 | The outage reproduces on this branch, in the current hour
 | The push of `d5caaca` created run `37236457077` ("Push email notification", 21:31:42Z)
