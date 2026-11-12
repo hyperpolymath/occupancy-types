@@ -2,19 +2,19 @@
 // Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 = Threat Model
 // SPDX-License-Identifier: CC-BY-SA-4.0
-// Copyright (c) {{CURRENT_YEAR}} {{AUTHOR}} ({{OWNER}}) <{{AUTHOR_EMAIL}}>
+// Copyright (c) 2026 Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
 
-== Threat Model: {{PROJECT_NAME}}
+== Threat Model: occupancy-types
 
 === Document Info
 
 |===
 | Field | Value
 
-| Project | {{PROJECT_NAME}}
+| Project | occupancy-types
 | Version | 1.0
-| Last Reviewed | {{DATE}}
-| Author | {{AUTHOR}}
+| Last Reviewed | 2026-11-12
+| Author | Jonathan D.A. Jewell
 | Methodology | STRIDE
 |===
 
@@ -39,7 +39,7 @@
 
 === System Overview
 
-Brief description of {{PROJECT_NAME}} and its architecture.
+Brief description of occupancy-types and its architecture.
 
 NOTE: See link:../STATE-VISUALIZER.adoc[STATE-VISUALIZER.adoc] for the full architecture diagram and completion dashboard.
 
@@ -120,7 +120,7 @@ NOTE: See link:../STATE-VISUALIZER.adoc[STATE-VISUALIZER.adoc] for the full arch
 
 | Unlogged deployment | Build artifacts | Medium | Medium | Medium | SLSA provenance; deployment audit trail
 | Denied merge of vulnerable code | Source code | Low | Medium | Low | Git history is immutable; signed commits
-| Secret rotation without record | CI/CD secrets | Low | Low | Low | Secret rotation logged in STATE.a2ml
+| Secret rotation without record | CI/CD secrets | Low | Low | Low | Secret rotation logged in `docs/status/ROADMAP.adoc` (Maintenance runs)
 |===
 
 

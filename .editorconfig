@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: MPL-2.0
 # Hyperpolymath estate canonical .editorconfig  (standards#343 phase 1)
-# Canon lives in rsr-template-repo; do not add a per-repo name to this header.
+# Canon lives in occupancy-types; do not add a per-repo name to this header.
 # https://editorconfig.org
 
 root = true
@@ -120,9 +120,6 @@ end_of_line = crlf
 # ReScript (LANGUAGE-POLICY 1.2) and Nix (retired 2026-06-01) are no longer
 # adopted for new work. These sections are inert where the files are absent and
 # keep surviving files from drifting. Removal is a per-repo judgement.
-
-[*.a2ml]
-indent_size = 2
 
 [*.go]
 indent_style = tab

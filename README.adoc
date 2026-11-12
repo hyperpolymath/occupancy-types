@@ -12,17 +12,17 @@ image:https://img.shields.io/badge/Provenance-Quantum--Safe-blueviolet[Quantum-S
 
 // ── Standard & quality gates ────────────────────────────────────────────────
 image:https://img.shields.io/badge/RSR-Rhodium_Standard-9C27B0[Rhodium Standard Repository,link="https://github.com/hyperpolymath/rhodium-standard-repositories"]
-image:https://www.bestpractices.dev/projects/{{OPENSSF_BP_ID}}/badge[OpenSSF Best Practices,link="https://www.bestpractices.dev/projects/{{OPENSSF_BP_ID}}"]
-image:https://api.scorecard.dev/projects/github.com/{{OWNER}}/{{REPO}}/badge[OpenSSF Scorecard,link="https://scorecard.dev/viewer/?uri=github.com/{{OWNER}}/{{REPO}}"]
-image:https://sonarcloud.io/api/project_badges/measure?project={{OWNER}}_{{REPO}}&metric=alert_status[SonarQube Quality Gate,link="https://sonarcloud.io/summary/new_code?id={{OWNER}}_{{REPO}}"]
-image:https://archive.softwareheritage.org/badge/origin/https://{{FORGE}}/{{OWNER}}/{{REPO}}/[Archived in Software Heritage,link="https://archive.softwareheritage.org/browse/origin/?origin_url=https://{{FORGE}}/{{OWNER}}/{{REPO}}"]
+image:https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/hyperpolymath/occupancy-types/governance-badges/badges/k9.json[K9 conformance,link="https://github.com/hyperpolymath/occupancy-types/actions/workflows/dogfood-gate.yml"]
+image:https://api.scorecard.dev/projects/github.com/hyperpolymath/occupancy-types/badge[OpenSSF Scorecard,link="https://scorecard.dev/viewer/?uri=github.com/hyperpolymath/occupancy-types"]
+image:https://sonarcloud.io/api/project_badges/measure?project=hyperpolymath_occupancy-types&metric=alert_status[SonarQube Quality Gate,link="https://sonarcloud.io/summary/new_code?id=hyperpolymath_occupancy-types"]
+image:https://archive.softwareheritage.org/badge/origin/https://github.com/hyperpolymath/occupancy-types/[Archived in Software Heritage,link="https://archive.softwareheritage.org/browse/origin/?origin_url=https://github.com/hyperpolymath/occupancy-types"]
 
 // ── Provenance & ecosystem ──────────────────────────────────────────────────
 image:https://img.shields.io/badge/Idris-Inside-5E5086?logo=idris&logoColor=white[Idris Inside,link="https://github.com/hyperpolymath/proven"]
 image:https://img.shields.io/badge/Zig-Zero--overhead-F7A41D?logo=zig&logoColor=black[Zig Zero-overhead FFI,link="https://github.com/hyperpolymath/typed-wasm"]
-image:https://api.thegreenwebfoundation.org/greencheckimage/{{FORGE}}[Green Web,link="https://www.thegreenwebfoundation.org/green-web-check/?url={{FORGE}}"]
+image:https://api.thegreenwebfoundation.org/greencheckimage/github.com[Green Web,link="https://www.thegreenwebfoundation.org/green-web-check/?url=github.com"]
 
-{{PROJECT_DESCRIPTION}}
+Early-stage research on compositional worst-case resource bounds, with a linear session-IR checker, occupancy-indexed state experiments in Idris 2, and a prototype stack-depth certificate checker. The long-term goal is predictable memory and network-buffer usage.
 
 == This repository: occupancy-types
 
@@ -89,36 +89,86 @@ Replace this section with a description of *your* project once initialised.
 [source,bash]
 ----
 # 1. Create a repo from this template (or clone it), then from the repo root:
-just repo-init                # interactive bootstrap: fills every {{PLACEHOLDER}}
+mise trust                    # allow this repository's mise.toml (needed without a TTY)
+mise install                  # the toolchain, including the yq repo-init needs
+mise exec -- just repo-init   # interactive bootstrap: fills every {{PLACEHOLDER}}
 
 # 2. See the available tasks:
-just                     # lists all phases (build, test, validate, audit, ...)
+mise exec -- just             # lists all phases (build, test, validate, audit, ...)
 
 # 3. Check the repo still satisfies the RSR shape:
-just validate            # structure + metadata checks
+mise exec -- just validate    # structure + metadata checks
 ----
+
+`mise exec --` puts the toolchain on `PATH` for that one command. Once mise is
+activated in your shell (`eval "$(mise activate bash)"`, or your shell's
+equivalent), plain `just` works and the prefix can be dropped.
 
 `just repo-init` prompts for the project name, owner, author, licence contact, and the
 other values listed in `.machine_readable/ai/PLACEHOLDERS.adoc`, substitutes them
 across the tree, validates the result, and (if available) runs the `k9-svc` checks.
 
-== AI-Assisted Installation
+[[ai-install]]
+== AI-Assisted Installation (Recommended)
 
-If you are an AI agent installing this project, read
-link:docs/AI_INSTALLATION_GUIDE.adoc[the AI installation guide] first — it gives
-the orientation order, the full prompt sequence, and the privacy notice.
+=== Just say it
 
-The one trap worth stating up front: **do not set `RSR_NON_INTERACTIVE=1`**. It
-stubs the shell builtin `read`, which also disables the loops that perform token
-substitution — the run never terminates and substitutes nothing. Pipe answers to
-stdin instead.
+Say this to any AI assistant that can read a URL and run commands (or give you
+commands to paste):
+
+[source,text]
+----
+Create a new repository from https://github.com/hyperpolymath/occupancy-types
+----
+
+The URL is the key: it leads the assistant to
+link:docs/AI_INSTALLATION_GUIDE.adoc[`docs/AI_INSTALLATION_GUIDE.adoc`], the
+complete step-by-step recipe. The assistant checks your system, installs the
+prerequisites, instantiates the template with `just repo-init`, and verifies the
+result with `just doctor`.
+
+* "Set up occupancy-types so I can work on the template itself — https://github.com/hyperpolymath/occupancy-types"
+* `./launcher.sh --ai-setup` (or `just ai-setup`) prints the line and the guide path.
+
+=== What you will be asked
+
+. Your operating system (Linux, macOS, or Windows via WSL2).
+. The new project's name, owner, author and licence contact (the values listed in
+  `.machine_readable/ai/PLACEHOLDERS.adoc`).
+. To confirm the privacy notice below.
+
+=== Privacy and security
+
+[IMPORTANT]
+====
+Setting up occupancy-types clones this repository and installs its developer
+tools per-user with mise (no administrator rights, nothing sent anywhere).
+`just repo-init` rewrites files only inside the new checkout; it creates no
+remote repository and pushes nothing until you do.
+====
+
+=== Minting without a terminal
+
+Agents and CI can mint non-interactively: set `RSR_NON_INTERACTIVE=1` and pass
+the answers as environment variables named like the prompts' variables in
+`build/just/repo-init.just` (`PROJECT_NAME`, `REPO`, `OWNER`, `AUTHOR` and
+`AUTHOR_EMAIL` are required; any other answer left unset is blank or takes its
+default). Piping the answers to stdin in prompt order also works.
+
+=== Troubleshooting
+
+Run `just doctor`; each FAIL carries a code explained in
+link:docs/SETUP.adoc#troubleshooting[`docs/SETUP.adoc` §Troubleshooting], and
+`just heal` applies the automatic fixes. Prefer to do it yourself? The full
+manual route is link:docs/SETUP.adoc[`docs/SETUP.adoc`]; developers and
+maintainers can brief an AI with `just ai-warmup dev` / `just ai-warmup maintainer`.
 
 == What you get
 
 * *Machine-readable metadata* (`.machine_readable/descriptiles/`) — `STATE`, `META`,
   `ECOSYSTEM`, `PLAYBOOK`, `AGENTIC`, `NEUROSYM`, `CLADE`, and `anchors/ANCHOR`,
   in deed, so tools and agents can read the project's state and boundaries.
-* *AI gatekeeper protocol* — `rsr-template-repo_chora.deed` (the repo deed) is the
+* *AI gatekeeper protocol* — `occupancy-types_chora.deed` (the repo deed) is the
   universal entry point that tells an AI agent how to work in this repo before it
   touches anything; it carries the AI allocation policy and the ply directory tree.
 * *Typed ABI/FFI seam* — `src/interface/Abi/` (Idris2 type + layout proofs) over
@@ -129,6 +179,41 @@ stdin instead.
   SBOM, and signing hooks.
 * *Governance* — `GOVERNANCE.adoc`, `MAINTAINERS.adoc`, `.github/` community health
   files, and a release `AUDIT.adoc` gate.
+
+== Governance badges
+
+The *K9 conformance* badge in the row at the top becomes live after
+`just repo-init` replaces the `hyperpolymath` and `occupancy-types` placeholders in its URL
+and an eligible push to `main` publishes it. It is published by
+`.github/workflows/dogfood-gate.yml` to a generated *orphan* branch called
+`governance-badges`, and read back through the shields endpoint.
+
+[cols="1,3",options="header"]
+|===
+| Badge | What it means
+
+| green `success`
+| The K9 lane ran for that commit on `main` and passed.
+
+| red `failure`
+| The K9 lane ran for that commit on `main` and failed.
+
+| grey `skipped`, `cancelled`, `unavailable`, `unknown`
+| That commit produced *no trustworthy* K9 result. Grey is not "pending" and
+  not a stale green: a skipped, cancelled or unavailable lane replaces an
+  earlier green badge with grey.
+|===
+
+* `governance-badges` is *generated output*. It deliberately has *no common
+  ancestor with `main`*, it has no pull request, and it must *never be merged*.
+  Recent pushes to it are ordinary badge refreshes.
+* A run that would publish the same bytes makes *no commit at all*.
+* Nothing in the badge pipeline can turn a failing validation green: only a
+  lane that ran and passed, with its artifact present, renders brightgreen.
+
+The full operational contract - the exact state table, how API errors are
+classified, how concurrent publications are serialised, and how to repair a bad
+file - is in link:.github/workflows/README.adoc[`.github/workflows/README.adoc`].
 
 == Repository map
 

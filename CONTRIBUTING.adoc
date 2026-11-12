@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // SPDX-FileCopyrightText: Jonathan D.A. Jewell (hyperpolymath) <j.d.a.jewell@open.ac.uk>
-= Contributing — rsr-template-repo
+= Contributing — occupancy-types
 :toc: left
 
 Contributors work on the *spine*: the template every RSR repo is minted
@@ -12,15 +12,15 @@ is the estate's bar.
 [source,bash]
 ----
 # Clone the repository
-git clone https://github.com/hyperpolymath/rsr-template-repo.git
-cd rsr-template-repo
+git clone https://github.com/hyperpolymath/occupancy-types.git
+cd occupancy-types
 
 # Using Guix (recommended for reproducibility)
 guix shell -D -f build/guix.scm
 
 # Or using toolbox/distrobox
-toolbox create rsr-template-repo-dev
-toolbox enter rsr-template-repo-dev
+toolbox create occupancy-types-dev
+toolbox enter occupancy-types-dev
 # Install dependencies manually
 
 # Verify setup
@@ -80,10 +80,10 @@ and include:
 
 Look for issues labelled:
 
-* https://github.com/hyperpolymath/rsr-template-repo/labels/good%20first%20issue[`good first issue`] — Simple Perimeter 3 tasks
-* https://github.com/hyperpolymath/rsr-template-repo/labels/help%20wanted[`help wanted`] — Community help needed
-* https://github.com/hyperpolymath/rsr-template-repo/labels/documentation[`documentation`] — Docs improvements
-* https://github.com/hyperpolymath/rsr-template-repo/labels/perimeter-3[`perimeter-3`] — Community sandbox scope
+* https://github.com/hyperpolymath/occupancy-types/labels/good%20first%20issue[`good first issue`] — Simple Perimeter 3 tasks
+* https://github.com/hyperpolymath/occupancy-types/labels/help%20wanted[`help wanted`] — Community help needed
+* https://github.com/hyperpolymath/occupancy-types/labels/documentation[`documentation`] — Docs improvements
+* https://github.com/hyperpolymath/occupancy-types/labels/perimeter-3[`perimeter-3`] — Community sandbox scope
 
 == Development workflow
 
@@ -111,6 +111,23 @@ We follow https://www.conventionalcommits.org/[Conventional Commits]:
 
 [optional footer]
 ----
+
+=== Signed commits
+
+Every commit that reaches the default branch must be signed; a ruleset refuses
+unsigned pushes. Estate policy:
+https://github.com/hyperpolymath/standards/blob/main/docs/SIGNING-POLICY.adoc[SIGNING-POLICY].
+
+* **People and interactive agents** sign with an SSH key registered on GitHub
+  as a *signing* key (`gpg.format=ssh`, `user.signingkey=<key>.pub`,
+  `commit.gpgsign=true`). The committer email must be verified on that account.
+* **Apps, bots and workflows** never `git push` local commits. They write
+  through the API (`createCommitOnBranch` or the estate `signed-push` action)
+  so that GitHub signs each commit.
+* Merge PRs with **squash**. The ruleset checks every commit on the PR branch,
+  not just the result, so one unsigned commit blocks the merge. Re-create such a
+  branch with signed commits (`git cherry-pick -S`) and open a new PR.
+  Rebase-merge replays commits unsigned and is disabled.
 
 == Cross-references
 

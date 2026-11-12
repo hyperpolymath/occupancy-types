@@ -49,7 +49,8 @@
 #
 # Per repository, per path:
 #
-#   declared diverged   -> SKIPPED   (the repo's VARIANT.a2ml says so)
+#   declared diverged   -> SKIPPED   (the repo deed's (variant) clause says so)
+#   retired VARIANT.a2ml -> BLOCKED  (whole repo; migrate it to the deed first)
 #   absent in repo      -> ADDED
 #   present, differs    -> UPDATED
 #   present, identical  -> UNCHANGED
@@ -96,6 +97,8 @@ set -euo pipefail
 PROG="$(basename "$0")"
 
 MANIFEST=""; REPOS_FILE=""; SPINE=""; WORK_DIR=""
+# The deed reader ships beside this script, whatever --spine names.
+CAMPAIGN_READ="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/deed-field.sh"
 BATCH=""; BATCH_SIZE=25; PUSH=0; APPLY=0; BRANCH=""; REPORT=""; BASE_REF=""
 ALLOW_TOKENS=0; SUBSTITUTE=1; QUIET=0
 
@@ -242,26 +245,22 @@ substitute() { # src-file repo-name -> stdout
 # ---------------------------------------------------------------------------
 # Divergence declarations
 # ---------------------------------------------------------------------------
-# If the repository carries a VARIANT.a2ml, honour it: a path it declares
+# If the repository's deed carries a (variant) clause, honour it: a path it declares
 # diverged is a decision already made, and a campaign must not silently reverse
 # a decision. Matches check-variant-drift.sh's in_list semantics, including the
 # 'dir/' prefix form.
 declared_diverged() { # repo-path path -> 0 if declared diverged
-    local dir="$1" want="$2" contract="$1/.machine_readable/descriptiles/VARIANT.a2ml"
-    [ -f "$contract" ] || return 1
-    local e
+    local dir="$1" want="$2" deed e
+    deed="$(bash "$CAMPAIGN_READ" --find "$dir" 2>/dev/null)" || return 1
     while IFS= read -r e; do
         [ -z "$e" ] && continue
         case "$e" in
             */) case "$want" in "$e"*) return 0 ;; esac ;;
             *)  [ "$want" = "$e" ] && return 0 ;;
         esac
-    done < <(awk '
-        $0 == "[paths.diverged]" || $0 == "[paths.diverged-pending-upstream]" ||
-        $0 == "[paths.operational-state]" { insec = 1; next }
-        insec && /^\[/ { insec = 0 }
-        insec && /^ *"/ { line = $0; sub(/^ *"/,"",line); sub(/".*$/,"",line); print line }
-    ' "$contract")
+    done < <(for k in diverged diverged-pending-upstream operational-state; do
+                 bash "$CAMPAIGN_READ" --list "$deed" variant/paths "$k" 2>/dev/null || true
+             done)
     return 1
 }
 
@@ -282,7 +281,7 @@ excluded() { # path -> 0 if excluded by the manifest
 REPORT="${REPORT:-$WORK_DIR/campaign-report.tsv}"
 printf 'repo\tpath\toutcome\tdetail\n' > "$REPORT"
 
-ADDED=0; UPDATED=0; UNCHANGED=0; SKIPPED=0; REFUSED=0; NOCHANGE=0; FAILED=0
+ADDED=0; UPDATED=0; SKIPPED=0; REFUSED=0; NOCHANGE=0; FAILED=0
 
 for repo in "${SELECTED[@]}"; do
     [ -z "$repo" ] && continue
@@ -313,6 +312,15 @@ for repo in "${SELECTED[@]}"; do
         FAILED=$((FAILED+1)); continue
     fi
 
+    # A repo still carrying the retired VARIANT.a2ml has divergence decisions
+    # this script no longer reads. Treating it as "no contract" would let the
+    # campaign overwrite paths the repo declared diverged, so it is refused.
+    if [ -f "$dir/.machine_readable/descriptiles/VARIANT.a2ml" ]; then
+        printf '%s\t-\tBLOCKED\tcarries retired VARIANT.a2ml; migrate it to the deed (variant) clause first\n' "$repo" >> "$REPORT"
+        note "  $repo: BLOCKED (retired VARIANT.a2ml)"
+        FAILED=$((FAILED+1)); continue
+    fi
+
     repo_changed=0
     repo_added=0; repo_updated=0; repo_skipped=0; repo_refused=0
 
@@ -320,14 +328,14 @@ for repo in "${SELECTED[@]}"; do
     while IFS= read -r rel; do
         [ -z "$rel" ] && continue
         case "$rel" in
-            *.gitkeep|*/.gitkeep) continue ;;
+            *.gitkeep) continue ;;
         esac
         if excluded "$rel"; then
             printf '%s\t%s\tEXCLUDED\tmanifest exclude\n' "$repo" "$rel" >> "$REPORT"
             repo_skipped=$((repo_skipped+1)); continue
         fi
         if declared_diverged "$dir" "$rel"; then
-            printf '%s\t%s\tDIVERGED\tdeclared in VARIANT.a2ml\n' "$repo" "$rel" >> "$REPORT"
+            printf '%s\t%s\tDIVERGED\tdeclared in the deed (variant) clause\n' "$repo" "$rel" >> "$REPORT"
             repo_skipped=$((repo_skipped+1)); continue
         fi
 
@@ -339,8 +347,11 @@ for repo in "${SELECTED[@]}"; do
             # Name the actual tokens. A report that says "carries {{TOKEN}}"
             # whatever it found is a claim wider than its evidence, which is
             # the specific failure mode this estate keeps auditing itself for.
-            toks="$(grep -ohE '\{\{[A-Z_]+\}\}' "$src" 2>/dev/null \
-                    | grep -vE "^\{\{($META_TOKENS)\}\}$" | sort -u | tr '\n' ' ')"
+            # `|| true` on both greps: a file with no tokens (the usual case)
+            # makes grep exit 1, which pipefail and set -e turned into an exit
+            # of the whole campaign at the first ordinary file.
+            toks="$({ grep -ohE '\{\{[A-Z_]+\}\}' "$src" 2>/dev/null || true; } \
+                    | { grep -vE "^\{\{($META_TOKENS)\}\}$" || true; } | sort -u | tr '\n' ' ')"
             if [ -n "$toks" ]; then
                 # shellcheck disable=SC2086  # deliberate word split for -n
                 printf '%s\t%s\tREFUSED\tcarries unfilled token(s): %s\n' \

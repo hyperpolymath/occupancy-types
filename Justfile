@@ -18,10 +18,13 @@ set positional-arguments := true
 # Re-generate with: contractile gen-just
 import? "build/contractile.just"
 
+# Provisioning canon: setup, doctor, heal, dev-shell, eval, ai-setup, … (see PROVISIONING below)
+mod provision 'build/just/provision.just'
+
 # Project metadata — customize these
-project := "rsr-template-repo"
+project := "occupancy-types"
 OWNER := "hyperpolymath"
-REPO := "rsr-template-repo"
+REPO := "occupancy-types"
 version := "0.1.0"
 tier := "infrastructure"  # 1 | 2 | infrastructure
 
@@ -52,7 +55,7 @@ info:
     @echo "Version: {{version}}"
     @echo "RSR Tier: {{tier}}"
     @echo "Recipes: $(just --summary | wc -w)"
-    @[ -f ".machine_readable/descriptiles/STATE.a2ml" ] && grep -oP 'phase\s*=\s*"\K[^"]+' .machine_readable/descriptiles/STATE.a2ml | head -1 | xargs -I{} echo "Phase: {}" || true
+    @d=$(bash scripts/deed-field.sh --find . 2>/dev/null) && bash scripts/deed-field.sh "$d" status phase | xargs -I{} echo "Phase: {}" || true
 
 # Run Invariant Path overlay tools for this repository
 invariant-path *ARGS:
@@ -85,26 +88,19 @@ import? "build/just/assess.just"
 # BUILD & COMPILE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Build the project (debug mode)
-build *args:
-    @echo "Building {{project}} (debug)..."
-    # TODO: Replace with your build command
-    # Examples:
-    #   cargo build {{args}}                    # Rust
-    #   mix compile {{args}}                    # Elixir
-    #   zig build {{args}}                      # Zig
-    #   deno task build {{args}}                # Deno/
-    @echo "Build complete"
+# Build the project with every detected language's toolchain (here: pack/idris2 for
+# the ABI, then `zig build` in src/interface/ffi). Replace the delegation with a
+# body of your own when the project needs a different build.
+build: provision::build
 
 # Build in release mode with optimizations
 build-release *args:
-    @echo "Building {{project}} (release)..."
     # TODO: Replace with your release build command
     # Examples:
     #   cargo build --release {{args}}
     #   MIX_ENV=prod mix compile {{args}}
     #   zig build -Doptimize=ReleaseFast {{args}}
-    @echo "Release build complete"
+    @echo "FAIL: 'just build-release' is not wired yet — nothing was built. Edit the 'build-release' recipe." >&2; exit 1
 
 # Build and watch for changes (requires entr or similar)
 build-watch:
@@ -113,7 +109,7 @@ build-watch:
     # Examples:
     #   find src -name '*.rs' | entr -c just build
     #   mix compile --force --warnings-as-errors
-    #   deno task dev
+    #   bun run dev
 
 # Clean build artifacts [reversible: rebuild with `just build`]
 clean:
@@ -152,67 +148,69 @@ check-ir:
     @bash scripts/check.sh --runnable-only
 
 # Run tests with verbose output
-test-verbose:
-    @echo "Running tests (verbose)..."
-    # TODO: Replace with verbose test command
+test-verbose: provision::test
 
 # Smoke test
 test-smoke:
-    @echo "Smoke test..."
     # TODO: Add basic sanity checks
+    @echo "FAIL: 'just test-smoke' is not wired yet — no smoke check ran. Edit the 'test-smoke' recipe." >&2; exit 1
 
 # Run end-to-end tests (full pipeline: build → run → verify)
 e2e:
-    @echo "Running E2E tests..."
-    # TODO: Replace with your E2E test command. Examples:
-    #   bash tests/e2e.sh                    # Shell-based E2E
-    #   npx playwright test                  # Browser E2E
-    #   mix test test/integration/e2e_test.exs  # Elixir E2E
-    #   cargo test --test end_to_end         # Rust E2E
-    @echo "E2E tests passed!"
+    bash tests/e2e.sh
 
 # Run aspect tests (cross-cutting concern validation)
 aspect:
-    @echo "Running aspect tests..."
-    # TODO: Replace with your aspect test command. Examples:
-    #   bash tests/aspect_tests.sh           # Shell-based aspect tests
-    #   cargo test --test aspects             # Rust aspect tests
     # Aspect tests validate architectural invariants:
     #   - Thread safety (mutex in FFI modules)
     #   - ABI/FFI contract (declarations match exports)
     #   - SPDX compliance (all files have license headers)
     #   - No dangerous patterns (believe_me, assert_total, etc.)
-    @echo "Aspect tests passed!"
+    bash tests/aspect_tests.sh
 
-# Run benchmarks (performance regression detection)
-bench:
-    @echo "Running benchmarks..."
-    # TODO: Replace with your benchmark command. Examples:
-    #   cargo bench                           # Rust criterion
-    #   zig build bench                       # Zig benchmarks
-    #   mix run bench/benchmarks.exs          # Elixir benchee
-    #   deno bench                            # Deno bench
-    @echo "Benchmarks complete!"
+# Run benchmarks (performance regression detection). Reports N/A until a language
+# declares some (e.g. a "bench" step in build.zig, [[bench]] in Cargo.toml).
+bench: provision::bench
+
+# Run the proven-tests-and-benches 3-outcome suite (0 pass / 1 fail / 2 setup)
+proven-tests *flags:
+    bash scripts/run-proven-suite.sh {{flags}}
+
+# Run the Idris2 proof escape-hatch & totality gate (proven-tests-and-benches)
+escape-hatches:
+    bash scripts/check-escape-hatches.sh
+
+# Run template benchmarks and check Six-Sigma leave-one-out regression vs baseline
+bench-check:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    tmp="$(mktemp)"
+    trap 'rm -f "$tmp"' EXIT
+    bash benches/template_bench.sh --json . > "$tmp"
+    bash scripts/check-bench-regression.sh "$tmp" benches/baseline.json
+
+# Check RFC 7493 (I-JSON) + RFC 8785 (JCS) canonical form across tracked JSON
+ijson-check:
+    bash scripts/check-ijson-jcs.sh --enforce .
 
 # Run readiness tests (Component Readiness Grade: D/C/B)
 readiness:
-    @echo "Running readiness tests..."
     # TODO: Replace with your readiness test command. Examples:
     #   cargo test --test readiness -- --nocapture
-    @echo "Readiness tests complete!"
+    @echo "FAIL: 'just readiness' is not wired yet — no readiness test ran. Edit the 'readiness' recipe." >&2; exit 1
 
 # Print the current CRG grade (reads from READINESS.md '**Current Grade:** X' line)
 crg-grade:
-    @grade=$$(grep -oP '(?<=\*\*Current Grade:\*\* )[A-FX]' READINESS.md 2>/dev/null | head -1); \
-    [ -z "$$grade" ] && grade="X"; \
-    echo "$$grade"
+    @grade=$(grep -oP '(?<=\*\*Current Grade:\*\* )[A-FX]' READINESS.md 2>/dev/null | head -1); \
+    [ -z "$grade" ] && grade="X"; \
+    echo "$grade"
 
 # Print a shields.io CRG badge for embedding in README files
 # Looks for '**Current Grade:** X' in READINESS.md; falls back to X
 crg-badge:
-    @grade=$$(grep -oP '(?<=\*\*Current Grade:\*\* )[A-FX]' READINESS.md 2>/dev/null | head -1); \
-    [ -z "$$grade" ] && grade="X"; \
-    case "$$grade" in \
+    @grade=$(grep -oP '(?<=\*\*Current Grade:\*\* )[A-FX]' READINESS.md 2>/dev/null | head -1); \
+    [ -z "$grade" ] && grade="X"; \
+    case "$grade" in \
       A) color="brightgreen" ;; \
       B) color="green" ;; \
       C) color="yellow" ;; \
@@ -221,16 +219,53 @@ crg-badge:
       F) color="critical" ;; \
       *) color="lightgrey" ;; \
     esac; \
-    echo "[![CRG $$grade](https://img.shields.io/badge/CRG-$$grade-$$color?style=flat-square)](https://github.com/hyperpolymath/standards/tree/main/component-readiness-grades)"
+    echo "[![CRG $grade](https://img.shields.io/badge/CRG-$grade-$color?style=flat-square)](https://github.com/hyperpolymath/standards/tree/main/component-readiness-grades)"
 
 # Run the full merge-requirement test suite (ALL categories)
 # Per STANDING rule: P2P + E2E + aspect + execution + lifecycle + bench
 test-all: test e2e aspect bench readiness
     @echo "All test categories passed — safe to merge!"
 
-# Run all quality checks
-quality: fmt-check lint test
-    @echo "All quality checks passed!"
+# Run all quality checks — and fail when one of them ran nothing.
+#
+# This used to be `quality: fmt-check lint test` plus `@echo "All quality checks
+# passed!"`. The echo is the defect: the provisioning engine reports a verb with
+# no command for any detected language as
+#
+#     info  fmt-check: N/A for julia (archetype: library) — nothing to run…
+#
+# and exits 0. That is honest output, but this recipe turned it into "All
+# quality checks passed!" — so a Julia repo printed green having run only
+# `Pkg.test()`, and a downstream repo shipped `fmt`, `fmt-check` and `lint`
+# recipes that were `@echo` stubs for the same reason.
+#
+# N/A is not a pass. A gating verb that cannot run for this repo's languages is
+# either wired up (the julia-library archetype wires fmt/fmt-check/lint with
+# scripts/julia-quality.jl) or removed from this recipe deliberately — never
+# echoed over.
+quality:
+    #!/usr/bin/env bash
+    set -uo pipefail
+    rc=0
+    for verb in fmt-check lint test; do
+        echo ""
+        echo "── ${verb} ──"
+        out="$(just "${verb}" 2>&1)"; st=$?
+        printf '%s\n' "$out"
+        if [ "$st" -ne 0 ]; then
+            echo "FAIL: '${verb}' exited ${st}" >&2
+            rc=1
+            continue
+        fi
+        if printf '%s\n' "$out" | grep -q 'N/A for'; then
+            echo "FAIL: '${verb}' ran nothing — N/A for every detected language." >&2
+            echo "      N/A is not a pass: wire the verb for this language, or drop" >&2
+            echo "      it from the 'quality' recipe on purpose." >&2
+            rc=1
+        fi
+    done
+    [ "$rc" -eq 0 ] && echo "" && echo "All quality checks ran and passed."
+    exit "$rc"
 
 # Fix all auto-fixable issues [reversible: git checkout]
 fix: fmt
@@ -241,46 +276,24 @@ fix: fmt
 # ═══════════════════════════════════════════════════════════════════════════════
 
 # Format all source files [reversible: git checkout]
-fmt:
-    @echo "Formatting source files..."
-    # TODO: Replace with your formatter
-    # Examples:
-    #   cargo fmt
-    #   mix format
-    #   gleam format
-    #   deno fmt
+fmt: provision::fmt
 
 # Check formatting without changes
-fmt-check:
-    @echo "Checking formatting..."
-    # TODO: Replace with your format check
-    # Examples:
-    #   cargo fmt --check
-    #   mix format --check-formatted
-    #   gleam format --check
+fmt-check: provision::fmt-check
 
-# Run linter
-lint:
-    @echo "Linting source files..."
-    # TODO: Replace with your linter
-    # Examples:
-    #   cargo clippy -- -D warnings
-    #   mix credo --strict
-    #   gleam check
+# Run linter (`zig fmt --check` on src/interface/ffi; like `test`, it parses the
+# FFI sources only after `just repo-init` has filled the template tokens)
+lint: provision::lint
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # RUN & EXECUTE
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Run the application
-run *args: build
-    # TODO: Replace with your run command
-    echo "Run not configured yet"
+# Run the application (N/A for a library; wire a "run" step or executable to enable)
+run: provision::run
 
 # Run with verbose output
-run-verbose *args: build
-    # TODO: Replace with verbose run command
-    echo "Run not configured yet"
+run-verbose: run
 
 # Install to user path
 install: build-release
@@ -308,14 +321,15 @@ deps-audit:
     # Examples:
     #   cargo audit
     #   mix audit
-    @command -v trivy >/dev/null && trivy fs --severity HIGH,CRITICAL --quiet . || true
+    @command -v trivy >/dev/null || { echo "FAIL: trivy is not installed, so nothing was audited (mise install, or edit this recipe)." >&2; exit 1; }
+    trivy fs --severity HIGH,CRITICAL --exit-code 1 --quiet .
     @echo "Audit complete"
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# ARRIVAL PACK — agent-facing CLAUDE.md, compiled from a2ml
+# ARRIVAL PACK — agent-facing CLAUDE.md, compiled from the repo deed
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Compile CLAUDE.md (the agent arrival pack) from this repo's a2ml
+# Compile CLAUDE.md (the agent arrival pack) from this repo's deed
 claude-md:
     @bash .machine_readable/arrival-pack/generate.sh
 
@@ -339,7 +353,7 @@ validate-repo-map:
     rm -f "$before"
     echo "repository map: up to date"
 
-# Fail if CLAUDE.md's generated region drifted from a2ml or was hand-edited
+# Fail if CLAUDE.md's generated region drifted from the deed or was hand-edited
 validate-claude-md:
     @bash .machine_readable/arrival-pack/verify.sh
 
@@ -462,16 +476,17 @@ import? "build/just/validate.just"
 # STATE MANAGEMENT
 # ═══════════════════════════════════════════════════════════════════════════════
 
-# Update STATE.a2ml timestamp
-state-touch:
-    @if [ -f ".machine_readable/descriptiles/STATE.a2ml" ]; then \
-        sed -i 's/last-updated = "[^"]*"/last-updated = "'"$(date +%Y-%m-%d)"'"/' .machine_readable/descriptiles/STATE.a2ml && \
-        echo "STATE.a2ml timestamp updated"; \
-    fi
+# Repo state lives in the repo deed's (status …) and (maturity …) clauses
+# (rsr-template-repo#209); the journal is docs/status/ROADMAP.adoc. There is
+# no last-updated stamp to touch: git log is the record of when it changed.
 
-# Show current phase from STATE.a2ml
+# Show the lifecycle phase and maturity from the repo deed
 state-phase:
-    @sed -n 's/^[[:space:]]*phase[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' .machine_readable/descriptiles/STATE.a2ml 2>/dev/null | head -1 || echo "unknown"
+    #!/usr/bin/env bash
+    DEED=$(bash scripts/deed-field.sh --find . || true)
+    if [ -z "$DEED" ]; then echo "unknown (no *_chora.deed)"; exit 0; fi
+    echo "phase: $(bash scripts/deed-field.sh "$DEED" status phase || echo unknown)"
+    echo "maturity: $(bash scripts/deed-field.sh "$DEED" maturity level || echo unknown)"
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # GUIX
@@ -493,7 +508,7 @@ guix-build:
 automate task="all":
     #!/usr/bin/env bash
     case "{{task}}" in
-        all) just fmt && just lint && just test && just docs && just state-touch ;;
+        all) just fmt && just lint && just test && just docs ;;
         cleanup) just clean && find . -name "*.orig" -delete && find . -name "*~" -delete ;;
         update) just deps && just validate ;;
         *) echo "Unknown: {{task}}. Use: all, cleanup, update" && exit 1 ;;
@@ -589,19 +604,46 @@ assail:
     @command -v panic-attack >/dev/null 2>&1 && panic-attack assail . || echo "WARN: panic-attack not found — install from https://github.com/hyperpolymath/panic-attacker"
 
 
-# Self-diagnostic — checks dependencies, permissions, paths
-doctor:
-    @echo "Running diagnostics for rsr-template-repo..."
-    @echo "Checking required tools..."
-    @command -v just >/dev/null 2>&1 && echo "  [OK] just" || echo "  [FAIL] just not found"
-    @command -v git >/dev/null 2>&1 && echo "  [OK] git" || echo "  [FAIL] git not found"
-    @echo "Checking for hardcoded paths..."
-    @grep -rn '$HOME\|$ECLIPSE_DIR' --include='*.rs' --include='*.ex' --include='*.res' --include='*.gleam' --include='*.sh' . 2>/dev/null | head -5 || echo "  [OK] No hardcoded paths"
-    @echo "Diagnostics complete."
+# ═══════════════════════════════════════════════════════════════════════════════
+# PROVISIONING (standards 3-practice/provisioning/PROVISIONING-STANDARD.adoc)
+# ═══════════════════════════════════════════════════════════════════════════════
+# The canon verbs live in the provision:: module; these delegations make
+# `just <verb>` and `just provision::<verb>` the same thing. Repository-specific
+# checks go in a `doctor-local` / `setup-local` / `heal-local` recipe.
+
+# Install everything this repository needs, then run doctor
+setup: provision::setup
+
+# Check the environment: PASS/WARN/FAIL with fix hints (exit 1 on any FAIL)
+doctor: provision::doctor
+
+# Apply the safe fixes doctor knows, then re-run doctor
+heal: provision::heal
+
+# Enter the Guix development shell (mise environment when Guix is absent)
+dev-shell: provision::dev-shell
+
+# Bump mise to latest, re-lock mise.lock, re-pin the Guix channel
+toolchain-refresh: provision::toolchain-refresh
+
+# Print the one sentence to give any AI assistant to set this repository up
+ai-setup: provision::ai-setup
+
+# Print a warm-up to paste into any AI: user, dev or maintainer
+ai-warmup who="user": (provision::ai-warmup who)
+
+# test + bench with timings, saved under .eval/
+eval: provision::eval
+
+# Where the toolchain and configuration are declared
+config-show: provision::config-show
+
+# How to fetch this repository with OPSM
+opsm: provision::opsm
 
 # Guided tour of key features
 tour:
-    @echo "=== rsr-template-repo Tour ==="
+    @echo "=== occupancy-types Tour ==="
     @echo ""
     @echo "1. Project structure:"
     @ls -la
@@ -616,12 +658,12 @@ tour:
 
 # Open feedback channel with diagnostic context
 help-me:
-    @echo "=== rsr-template-repo Help ==="
+    @echo "=== occupancy-types Help ==="
     @echo "Platform: $(uname -s) $(uname -m)"
     @echo "Shell: $SHELL"
     @echo ""
     @echo "To report an issue:"
-    @echo "  https://github.com/hyperpolymath/rsr-template-repo/issues/new"
+    @echo "  https://github.com/hyperpolymath/occupancy-types/issues/new"
     @echo ""
     @echo "Include the output of 'just doctor' in your report."
 
@@ -719,3 +761,13 @@ uncloak:
     else
         echo "Use 'ls -a' to view dotfiles on this OS."
     fi
+
+# Repair .github/workflows/actions.lock after a Dependabot github-actions bump.
+# Dependabot rewrites `uses:` in the workflow YAML but cannot touch the lock, so
+# the Lock Sync Gate goes red. This resolves each new ref (git ls-remote, peeled
+# commit for annotated tags), rewrites the lock, and re-validates with
+# scripts/check-lock-sync.sh. Fails loudly (lock untouched) on anything it cannot
+# resolve. Run it on the Dependabot branch, then commit with a SIGNED commit.
+lock-sync-fix:
+    ./scripts/lock-sync-fix.sh
+    ./scripts/check-lock-sync.sh

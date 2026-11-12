@@ -23,11 +23,11 @@ predecessors did.
 
 | `.clinerules`
 | yes
-| AI editor rules. Cline/Cursor/Windsurf read these from the project
+| AI editor rules. Cline reads them from the project ROOT, so the copies formerly under .machine_readable/ai/ were inert (.cursorrules and .windsurfrules were retired 2026-10-26)
 
-| `.cursorrules`
-| yes
-| ROOT, so the copies formerly under .machine_readable/ai/ were inert.
+| `.coderabbit.yaml`
+| optional
+| CodeRabbit reads its config from the root only; pins Docstring Coverage to mode: warning (estate decision, not a vendor default). Optional: only the template and the repos whose rulesets require the CodeRabbit context carry it
 
 | `.devcontainer/`
 | optional
@@ -44,6 +44,10 @@ predecessors did.
 | `.gitattributes`
 | yes
 | -
+
+| `.gitbot-fleet/`
+| yes
+| fleet enrolment manifest + report-backs/ (empty in git; filled per run by the fork-governance fleet job). Read by the Hypatia verdict grid at this path and no other
 
 | `.github/`
 | yes
@@ -73,14 +77,6 @@ predecessors did.
 | yes
 | git reads .mailmap from the worktree root only
 
-| `.tool-versions`
-| yes
-| -
-
-| `.windsurfrules`
-| yes
-| -
-
 | `CHANGELOG.adoc`
 | yes
 | AsciiDoc is the estate-standard documentation format
@@ -91,23 +87,27 @@ predecessors did.
 
 | `CLAUDE.md`
 | yes
-| generated arrival pack; the generator, pre-commit and Claude Code all read it from the ROOT (do not hand-edit; edit the a2ml source)
+| generated arrival pack; the generator, pre-commit and Claude Code all read it from the ROOT (do not hand-edit; edit the repo deed)
+
+| `CODE_OF_CONDUCT.adoc`
+| optional
+| community health file; GitHub accepts it at root, docs/ or .github/
 
 | `CONTRIBUTING.adoc`
 | optional
 | estate docs gate (standards scripts/check-docs-presence.sh) requires CONTRIBUTING at the ROOT; this is the copy it verifies
-
-| `GEMINI.md`
-| optional
-| pointer to CLAUDE.md for repos without AGENTS.md yet
 
 | `Justfile`
 | yes
 | thin; delegates phases to build/just/*.just
 
 | `LICENSE`
+| optional
+| forge-facing copy of LICENSES/MPL-2.0.txt. Optional, not required:
+
+| `LICENSE.adoc`
 | yes
-| -
+| the licence (MPL-2.0); renamed from LICENSE to the estate AsciiDoc format 2026-10-26
 
 | `LICENSES/`
 | yes
@@ -121,13 +121,13 @@ predecessors did.
 | yes
 | -
 
+| `SUPPORT.adoc`
+| optional
+| community health file; GitHub accepts it at root, docs/ or .github/
+
 | `ULTRAPLAN.md`
 | yes
 | project plan of record (occupancy-types): thesis, rung contract, ladder, kill criteria, decision log
-
-| `archetypes/`
-| optional
-| template-only variation seam (ADR-0003); `just repo-init` removes it from minted repos
 
 | `benches/`
 | optional
@@ -135,7 +135,7 @@ predecessors did.
 
 | `build/`
 | yes
-| build orchestration: just/ phase modules, container/, docs-seed/, templates/, guix.scm (canon 1.2.1 guix-primary template_ref = build/)
+| build orchestration: just/ phase modules, container/, docs-seed/, templates/, guix.scm (canon 1.2.1 guix-primary template_ref = "build/")
 
 | `ci/`
 | yes
@@ -157,15 +157,23 @@ predecessors did.
 | optional
 | optional feature packs
 
+| `launcher.sh`
+| yes
+| --setup/--doctor/--heal/--ai-setup (launcher-standard 0.6.0); the one file a newcomer runs first
+
+| `mise.lock`
+| yes
+| makes "latest" concrete: version + per-platform checksum; mise reads it beside mise.toml
+
 | `mise.toml`
 | yes
-| pinned toolchains
+| the toolchain: every tool at "latest" (PROVISIONING-STANDARD §4)
 
 | `occupancy-types.agda-lib`
 | yes
 | Agda library descriptor for the occupancy-types proof modules
 
-| `rsr-template-repo_chora.deed`
+| `occupancy-types_chora.deed`
 | yes
 | the repo deed: universal AI entry point; family-7 allocation manifest + ply tree folded in (standards#837 pilot). Filename carries the repo slug (deed dispatch <stem>_chora.deed), so repo-init renames it at mint
 
@@ -182,8 +190,8 @@ predecessors did.
 | only where the repo is analysed by SonarCloud
 
 | `src/`
-| yes
-| -
+| optional
+| source tree; optional for non-code/specification/governance repositories (issue #233, e.g. standards)
 
 | `tests/`
 | yes
@@ -209,6 +217,8 @@ your own repo - but do not read their emptiness as neglect here.
 
 [cols="1"]
 |===
+| `.machine_readable/bot_directives/`
+| `.machine_readable/descriptiles/anchors/`
 | `.machine_readable/scripts/verification/`
 | `docs/governance/audit/`
 | `docs/governance/audit/compliance/`
@@ -222,7 +232,6 @@ your own repo - but do not read their emptiness as neglect here.
 | `docs/governance/planning/could/`
 | `docs/governance/planning/must/`
 | `docs/governance/planning/should/`
-| `docs/reports/compliance/`
 | `docs/reports/maintenance/`
 | `docs/reports/performance/`
 | `docs/reports/quality/`

@@ -1,14 +1,14 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: MPL-2.0
 #
-# maint-assault.sh — High-rigor stress testing using panic-attacker
+# maint-assault.sh — High-rigor stress testing using panic-attack
 #
 # This script runs a full assault (static + dynamic) on the project binary
 # to detect logic-based bug signatures and environmental vulnerabilities.
 
 set -euo pipefail
 
-BINARY_NAME="{{project}}"
+BINARY_NAME="occupancy_types"
 REPORT_PATH="docs/reports/security/assault-latest.json"
 PA_BIN="${PANIC_ATTACK_BIN:-panic-attack}"
 
@@ -31,10 +31,10 @@ fi
 echo "Initiating full assault on $BINARY_NAME..."
 mkdir -p "$(dirname "$REPORT_PATH")"
 
-"$PA_BIN" assault "target/release/$BINARY_NAME" 
-    --source . 
-    --intensity medium 
-    --duration 10 
+"$PA_BIN" assault "target/release/$BINARY_NAME" \
+    --source . \
+    --intensity medium \
+    --duration 10 \
     --output "$REPORT_PATH"
 
 echo ""

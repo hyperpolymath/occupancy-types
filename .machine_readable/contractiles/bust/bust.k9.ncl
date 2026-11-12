@@ -3,7 +3,7 @@ K9!
 # bust.k9.ncl — K9 trust-tier component of the bust trident
 # Author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
 #
-# Pairs with: Bustfile.a2ml (declaration) + bust.ncl (runner).
+# Pairs with: the `declaration` field of this file + bust.ncl (runner).
 #
 # Verb:       bust            (hard-stop / expiry / "must-not-run")
 # Tier:       Hunt-read-only  (subprocess probes for expiry/state checks)
@@ -23,39 +23,125 @@ K9!
 # past their expiry), and the "it works, ship it" pattern where a
 # caller silently starts using a must-not-run API.
 
-let base_k9 = import "../k9/template-hunt.k9.ncl" in
+#
+# 2026-10-19 (K9 contract v1.0.0, D173, standards#1058): this record is a
+# DECLARATION evaluated at 'Yard. The probes it lists are run by the paired
+# runner (bust.ncl and the scripts/run-*.sh runners), which is the execution
+# surface; this file spawns nothing. A 'Hunt record needs signature_required,
+# a signature block and a verified signature (K9-S008/S009/C001); no
+# contractile carries one, so 'Hunt here was a claim the gate could never honour.
+
 let base    = import "../_base.ncl" in
 
 {
-  pedigree = base_k9.pedigree_schema & {
+  pedigree = base.pedigree_schema & {
     contractile_verb = "bust",
-    paired_xfile     = "../bust/Bustfile.a2ml",
+    schema_version   = "1.0.0",
+    component_type   = "contractile:bust",
+    semantics        = "hard-stop / expiry / must-not-run declarations",
+    side_effects     = [],
+    paired_xfile     = "../bust/bust.k9.ncl#declaration",
     paired_runner    = "../bust/bust.ncl",
 
-    tier      = 'Hunt,
+    tier      = 'Yard,
     authority = 'blocking,
 
     metadata = {
       name = "bust-k9",
       version = "1.0.0",
       description = "Hard-stop / expiry / must-not-run gate. Fourth trident instance. Completes the blocking-authority triple (must + trust + bust).",
-      paired_xfile = "Bustfile.a2ml",
+      paired_xfile = "bust.k9.ncl#declaration",
       paired_runner = "bust.ncl",
       author = "Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>",
     },
 
     security = {
-      leash = 'Hunt,
-      signature_required = true,
+      leash = 'Yard,
+      signature_required = false,
       trust_level = "read-only expiry + state-check with subprocess",
       allow_network = false,
       allow_filesystem_write = false,
-      allow_subprocess = true,
+      allow_subprocess = false,   # the paired runner spawns; this record does not
       probe_scope = 'read_only,
+    },
+
+    # Trident manifest — folded in from the retired <verb>.manifest.a2ml.
+    # The sha256 / size_bytes fields were "pending-first-verify" placeholders
+    # and the cross_refs named the retired Xfile; both are dropped. The
+    # declaration now lives in this file (`declaration` below), so the
+    # trident is runner + this k9 component.
+    trident = {
+      notes = "Fourth trident instance. Completes the blocking-authority triple:\nmust (persistent invariants), trust (ephemeral transactions),\nbust (hard-stop / expiry / must-not-run). Between them, every\nrelease-blocking contractile concern is covered.\n",
+      trident_version = "1.0.0",
+      semantics = "hard-stop / expiry / must-not-run declarations",
+      cardinality = "one per repo",
+      authority = "blocking (hard gate)",
+      files = [
+      ],
+      signed_by = {
+        user = "Jonathan D.A. Jewell",
+        date = "2026-04-18",
+        context = "bust trident — canonical template in occupancy-types. Completes the blocking-authority triple (must + trust + bust). Specialises in deprecated-path-reintroduction catchment. Declares hard-stop / expiry / must-not-run conditions. Copy this trident into a new repo and declare its real breakage / expiry conditions.",
+      },
+      history = [
+        { date = "2026-04-18", event = "trident-born", note = "Bustfile.a2ml and bust.ncl pre-existed. This manifest + bust.k9.ncl complete the trident. Inherits the full negotiation+accountability schema from intend.k9.ncl v2.0.0 + trust/must extensions; adds flag_deprecated_reintroduction for C2-defense specificity." },
+        { date = "2026-10-06", event = "a2ml-retired", note = "The A2ML declaration and this manifest were folded into bust.k9.ncl (declaration + pedigree.trident) under the owner directive that no .a2ml file remains. Item ids, probes and prose were carried over unchanged." },
+      ],
     },
   },
 
-  variance_schema = {
+  # -------------------------------------------------------------------
+  # Declaration — the bust contract data. Migrated losslessly from the
+  # retired A2ML Xfile (owner directive: zero A2ML files). Item records
+  # carry the field names of bust.ncl's `schema`; values are kept exactly
+  # as authored, so the runner schema is NOT applied as a contract here
+  # (several authored severities / classes / fields fall outside its enums).
+  # Read by .machine_readable/coaptation/extract-clauses.sh.
+  # -------------------------------------------------------------------
+  declaration = {
+    preamble = "# SPDX-License-Identifier: MPL-2.0\n# Bustfile — failure mode contractile for occupancy-types\n# Author: Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>\n#\n# Paired runner: bust.ncl\n# Verb:          bust\n# Semantics:     Every declared failure mode must have a working recovery path\n#                that has been exercised. Status moves:\n#                  declared → drilled (probe run) → verified (recovery confirmed)\n#                  or → failing (recovery broken)\n#\n# CLI:\n#   contractile bust check  → list failure modes + recovery status\n#   contractile bust drill  → inject failures, verify recovery paths\n#\n# This repository: occupancy-types is the canonical template for RSR compliance.\n# Failure modes here relate to template distribution and substitution.\n",
+    abstract = "Bustfile for occupancy-types. Lists failure modes specific to the template\nrepository itself, particularly around template distribution, substitution,\nand synchronization across the hyperpolymath estate.",
+    prose = [
+    ],
+    failure_modes = [
+      {
+        id = "template-substitution-failure",
+        section = "Failure Modes",
+        class = 'template_processing,
+        description = "Template substitution fails when initializing a new repo from this template",
+        injection_probe = "cp -r occupancy-types test-repo && cd test-repo && sed -i 's/occupancy-types/TEST/g' .machine_readable/contractiles/intend/intend.k9.ncl && grep -q 'TEST' .machine_readable/contractiles/intend/intend.k9.ncl",
+        recovery_probe = "git -C test-repo diff --quiet .machine_readable/contractiles/intend/intend.k9.ncl",
+        expected_recovery_time_seconds = 10,
+        status = 'declared,
+        notes = "Verify that substitution scripts handle all placeholder replacements correctly",
+      },
+      {
+        id = "sync-drift-between-repos",
+        section = "Failure Modes",
+        class = 'synchronization,
+        description = "Drift occurs between occupancy-types and other repos after template updates",
+        injection_probe = "echo 'template_updated' > /tmp/test_drift_marker",
+        recovery_probe = "test -f /tmp/test_drift_marker && rm /tmp/test_drift_marker",
+        expected_recovery_time_seconds = 60,
+        status = 'declared,
+        notes = "The estate-wide sync scripts (see scripts/) should prevent this; verify with scripts/verify-sync.sh",
+      },
+      {
+        id = "contractile-parse-error",
+        section = "Failure Modes",
+        class = 'contractile_format,
+        description = "A contractile file fails to parse due to syntax errors",
+        injection_probe = "echo 'invalid syntax' >> occupancy-types/.machine_readable/contractiles/intend/intend.k9.ncl",
+        recovery_probe = "git checkout occupancy-types/.machine_readable/contractiles/intend/intend.k9.ncl",
+        expected_recovery_time_seconds = 5,
+        status = 'declared,
+        notes = "Every <verb>.k9.ncl must typecheck; validate with .github/hooks/validate-k9.sh and nickel typecheck",
+      },
+    ],
+  },
+
+  # A record SHAPE (contract-only fields, no values): kept out of `nickel export`.
+  variance_schema | not_exported = {
     entry_id     | String,
     reason       | String,
     approved_by  | String,
@@ -83,7 +169,7 @@ let base    = import "../_base.ncl" in
       { kind = 'verisimdb, table = "contractile_executions",
         schema = "contractile_execution_v1",
         aux_tables = [ "bust_triggers_history" ] },
-      { kind = 'drift_log, path = ".machine_readable/descriptiles/DRIFT.a2ml",
+      { kind = 'drift_log, path = ".machine_readable/descriptiles/drift_praxis.deed",
         append_only = true },
     ],
 
@@ -136,7 +222,7 @@ let base    = import "../_base.ncl" in
             signature_required = true,
           },
         ],
-        signed_record_destination = ".machine_readable/descriptiles/ratification-<session-id>.a2ml",
+        signed_record_destination = ".machine_readable/descriptiles/ratification-<session-id>_praxis.deed",
         must_precede_work = true,
       },
 
