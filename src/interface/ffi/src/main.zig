@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MPL-2.0
 // Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-// {{PROJECT}} FFI Implementation
+// OCCUPANCY_TYPES FFI Implementation
 //
 // This module implements the C-compatible FFI declared in src/abi/Foreign.idr
 // All types and layouts must match the Idris2 ABI definitions.
@@ -10,7 +10,7 @@ const std = @import("std");
 
 // Version information (keep in sync with project)
 const VERSION = "0.1.0";
-const BUILD_INFO = "{{PROJECT}} built with Zig " ++ @import("builtin").zig_version_string;
+const BUILD_INFO = "OCCUPANCY_TYPES built with Zig " ++ @import("builtin").zig_version_string;
 
 /// Thread-local error storage
 threadlocal var last_error: ?[]const u8 = null;
@@ -23,6 +23,16 @@ fn setError(msg: []const u8) void {
 /// Clear the last error
 fn clearError() void {
     last_error = null;
+}
+
+/// Duplicate a byte slice as a NUL-terminated buffer across Zig 0.15/0.16/0.17
+/// (`Allocator.dupeZ` was removed in Zig 0.17).
+/// The caller owns the returned slice and must free it with `allocator`.
+/// Propagates allocation failure.
+fn dupeZ(allocator: std.mem.Allocator, bytes: []const u8) ![:0]u8 {
+    const buf = try allocator.allocSentinel(u8, bytes.len, 0);
+    @memcpy(buf[0..bytes.len], bytes);
+    return buf;
 }
 
 //==============================================================================
@@ -38,8 +48,8 @@ pub const Result = enum(c_int) {
     null_pointer = 4,
 };
 
-/// Library handle (opaque to prevent direct access)
-pub const Handle = opaque {
+/// Library handle. C sees only a pointer, so the fields stay private to Zig.
+pub const Handle = struct {
     // Internal state hidden from C
     allocator: std.mem.Allocator,
     initialized: bool,
@@ -52,7 +62,7 @@ pub const Handle = opaque {
 
 /// Initialize the library
 /// Returns a handle, or null on failure
-export fn {{project}}_init() ?*Handle {
+export fn occupancy_types_init() ?*Handle {
     const allocator = std.heap.c_allocator;
 
     const handle = allocator.create(Handle) catch {
@@ -71,7 +81,7 @@ export fn {{project}}_init() ?*Handle {
 }
 
 /// Free the library handle
-export fn {{project}}_free(handle: ?*Handle) void {
+export fn occupancy_types_free(handle: ?*Handle) void {
     const h = handle orelse return;
     const allocator = h.allocator;
 
@@ -87,7 +97,7 @@ export fn {{project}}_free(handle: ?*Handle) void {
 //==============================================================================
 
 /// Process data (example operation)
-export fn {{project}}_process(handle: ?*Handle, input: u32) Result {
+export fn occupancy_types_process(handle: ?*Handle, input: u32) Result {
     const h = handle orelse {
         setError("Null handle");
         return .null_pointer;
@@ -110,8 +120,10 @@ export fn {{project}}_process(handle: ?*Handle, input: u32) Result {
 //==============================================================================
 
 /// Get a string result (example)
-/// Caller must free the returned string
-export fn {{project}}_get_string(handle: ?*Handle) ?[*:0]const u8 {
+/// Return a NUL-terminated "Example result" owned by the caller; free it with
+/// `occupancy_types_free_string`. Return null and set the thread-local error for a
+/// null or uninitialized handle, or allocation failure. Clear the error on success.
+export fn occupancy_types_get_string(handle: ?*Handle) ?[*:0]const u8 {
     const h = handle orelse {
         setError("Null handle");
         return null;
@@ -123,7 +135,7 @@ export fn {{project}}_get_string(handle: ?*Handle) ?[*:0]const u8 {
     }
 
     // Example: allocate and return a string
-    const result = h.allocator.dupeZ(u8, "Example result") catch {
+    const result = dupeZ(h.allocator, "Example result") catch {
         setError("Failed to allocate string");
         return null;
     };
@@ -133,7 +145,7 @@ export fn {{project}}_get_string(handle: ?*Handle) ?[*:0]const u8 {
 }
 
 /// Free a string allocated by the library
-export fn {{project}}_free_string(str: ?[*:0]const u8) void {
+export fn occupancy_types_free_string(str: ?[*:0]const u8) void {
     const s = str orelse return;
     const allocator = std.heap.c_allocator;
 
@@ -146,7 +158,7 @@ export fn {{project}}_free_string(str: ?[*:0]const u8) void {
 //==============================================================================
 
 /// Process an array of data
-export fn {{project}}_process_array(
+export fn occupancy_types_process_array(
     handle: ?*Handle,
     buffer: ?[*]const u8,
     len: u32,
@@ -180,14 +192,15 @@ export fn {{project}}_process_array(
 // Error Handling
 //==============================================================================
 
-/// Get the last error message
-/// Returns null if no error
-export fn {{project}}_last_error() ?[*:0]const u8 {
+/// Get the last error message.
+/// Return an allocated NUL-terminated copy of the current thread's error, or
+/// null if no error is set or allocation fails. Leave the stored error unchanged.
+/// Caller must free a non-null returned string with `occupancy_types_free_string`.
+export fn occupancy_types_last_error() ?[*:0]const u8 {
     const err = last_error orelse return null;
 
-    // Return C string (static storage, no need to free)
     const allocator = std.heap.c_allocator;
-    const c_str = allocator.dupeZ(u8, err) catch return null;
+    const c_str = dupeZ(allocator, err) catch return null;
     return c_str.ptr;
 }
 
@@ -196,12 +209,12 @@ export fn {{project}}_last_error() ?[*:0]const u8 {
 //==============================================================================
 
 /// Get the library version
-export fn {{project}}_version() [*:0]const u8 {
+export fn occupancy_types_version() [*:0]const u8 {
     return VERSION.ptr;
 }
 
 /// Get build information
-export fn {{project}}_build_info() [*:0]const u8 {
+export fn occupancy_types_build_info() [*:0]const u8 {
     return BUILD_INFO.ptr;
 }
 
@@ -210,10 +223,10 @@ export fn {{project}}_build_info() [*:0]const u8 {
 //==============================================================================
 
 /// Callback function type (C ABI)
-pub const Callback = *const fn (u64, u32) callconv(.C) u32;
+pub const Callback = *const fn (u64, u32) callconv(.c) u32;
 
 /// Register a callback
-export fn {{project}}_register_callback(
+export fn occupancy_types_register_callback(
     handle: ?*Handle,
     callback: ?Callback,
 ) Result {
@@ -244,7 +257,7 @@ export fn {{project}}_register_callback(
 //==============================================================================
 
 /// Check if handle is initialized
-export fn {{project}}_is_initialized(handle: ?*Handle) u32 {
+export fn occupancy_types_is_initialized(handle: ?*Handle) u32 {
     const h = handle orelse return 0;
     return if (h.initialized) 1 else 0;
 }
@@ -254,22 +267,27 @@ export fn {{project}}_is_initialized(handle: ?*Handle) u32 {
 //==============================================================================
 
 test "lifecycle" {
-    const handle = {{project}}_init() orelse return error.InitFailed;
-    defer {{project}}_free(handle);
+    const handle = occupancy_types_init() orelse return error.InitFailed;
+    defer occupancy_types_free(handle);
 
-    try std.testing.expect({{project}}_is_initialized(handle) == 1);
+    try std.testing.expect(occupancy_types_is_initialized(handle) == 1);
+
+    const str = occupancy_types_get_string(handle) orelse return error.StringFailed;
+    defer occupancy_types_free_string(str);
+    try std.testing.expectEqualStrings("Example result", std.mem.span(str));
 }
 
 test "error handling" {
-    const result = {{project}}_process(null, 0);
+    const result = occupancy_types_process(null, 0);
     try std.testing.expectEqual(Result.null_pointer, result);
 
-    const err = {{project}}_last_error();
+    const err = occupancy_types_last_error();
+    defer occupancy_types_free_string(err);
     try std.testing.expect(err != null);
 }
 
 test "version" {
-    const ver = {{project}}_version();
+    const ver = occupancy_types_version();
     const ver_str = std.mem.span(ver);
     try std.testing.expectEqualStrings(VERSION, ver_str);
 }

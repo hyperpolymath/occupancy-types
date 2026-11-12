@@ -5,6 +5,8 @@
 :toclevels: 3
 :sectnums:
 
+NOTE: Superseded in part (2026-10-06, rsr-template-repo#209): the `.a2ml` files named below no longer exist; their facts are clauses of the repo deed (`*_chora.deed`).
+
 *Measured 2026-09-15 against the live estate.* This document records what the
 template's self-identity repair passes do, what they provably did *not* do to
 repositories minted before they existed, and — just as importantly — which of
@@ -47,7 +49,9 @@ that it WAS the template, and would have reported its code analysis into the
 TEMPLATE's SonarCloud project.
 ____
 
-The ordinary mint path rewrites `{{OWNER}}`, `{{REPO}}` and friends. Those
+NOTE: 2026-10-02 — rsr-template-repo#209 retired STATE/META/ECOSYSTEM/AGENTIC/CLADE.a2ml; their content is now in the repo deed (`*_chora.deed`) and `docs/status/ROADMAP.adoc`.
+
+The ordinary mint path rewrites `hyperpolymath`, `occupancy-types` and friends. Those
 tokens *are* consumed widely — 56 files in this repository, including the
 README badge block, `CITATION.cff`, `.github/CODEOWNERS`,
 `.github/settings.yml` and the three AI-assistant rule files. The problem is
@@ -188,8 +192,10 @@ Both `Justfile:24` and `.machine_readable/contractiles/Justfile:24` declare
 `canonical-name = "rsr-julia-library-template-repo"`. `OWNER :=` is correct in
 both files.
 
+NOTE: 2026-10-02 — in this template, rsr-template-repo#209 retired CLADE.a2ml; the canonical name now lives in the repo deed header (`:canonical-name`).
+
 *Severity is lower than it appears.* Across every `Justfile` and `*.just` in
-that repository there are *zero* `{{OWNER}}` or `{{REPO}}` interpolations, so
+that repository there are *zero* `hyperpolymath` or `occupancy-types` interpolations, so
 neither variable is consumed by any recipe. This is a wrong self-description
 with no runtime effect — worth fixing because a template propagates its own
 mistakes, not because anything currently misbehaves.

@@ -43,7 +43,23 @@ self-assess:
     echo "── ESSENTIAL (removing breaks Rhodium Standard) ──────────"
     echo ""
 
-    for f in LICENSE .editorconfig .gitignore; do
+    # The licence may be LICENSE in any usual spelling (this template ships
+    # LICENSE.adoc) or a REUSE LICENSES/ directory holding a non-empty
+    # <SPDX-ID>.<ext> licence text (dotfiles and READMEs do not count).
+    lic=""
+    for cand in LICENSE LICENSE.txt LICENSE.md LICENSE.adoc; do
+        [ -f "$cand" ] && { lic="$cand"; break; }
+    done
+    if [ -z "$lic" ] && [ -n "$(find LICENSES -maxdepth 1 -type f -size +0c -name '*.*' ! -name '.*' ! -iname 'README*' 2>/dev/null | head -n 1)" ]; then
+        lic="LICENSES/"
+    fi
+    if [ -n "$lic" ]; then
+        echo "  ✓ $lic — KEEP (RSR required)"
+    else
+        echo "  ✗ LICENSE — MISSING (RSR violation!)"
+    fi
+
+    for f in .editorconfig .gitignore; do
         if [ -f "$f" ]; then
             echo "  ✓ $f — KEEP (RSR required)"
         else
@@ -101,15 +117,17 @@ self-assess:
         echo "    ⚠ Consequence: no C-compatible FFI bridge."
     fi
 
-    if $HAS_API && [ -f ".machine_readable/integrations/groove.a2ml" ]; then
-        PORT=$(grep '(port ' .machine_readable/integrations/groove.a2ml 2>/dev/null | sed 's/.*(port \([0-9]*\)).*/\1/')
+    # The Groove manifest is the repo deed's (integrations (groove …)) clause.
+    GROOVE_DEED=$(bash scripts/deed-field.sh --find . 2>/dev/null || true)
+    if $HAS_API && [ -n "$GROOVE_DEED" ] && bash scripts/deed-field.sh --has "$GROOVE_DEED" integrations/groove; then
+        PORT=$(bash scripts/deed-field.sh "$GROOVE_DEED" integrations/groove port 2>/dev/null || true)
         if [ "$PORT" = "0" ]; then
-            echo "  ⚠ groove.a2ml — Port not assigned. Run 'just groove-setup'."
+            echo "  ⚠ (integrations (groove)) — Port not assigned. Run 'just groove-setup'."
         else
-            echo "  ✓ groove.a2ml — KEEP (Groove discovery on port $PORT)"
+            echo "  ✓ (integrations (groove)) — KEEP (Groove discovery on port $PORT)"
         fi
     elif $HAS_API; then
-        echo "  ✗ groove.a2ml — MISSING. Your project has an API but no Groove manifest."
+        echo "  ✗ (integrations (groove)) — MISSING. Your project has an API but no Groove clause in its deed."
         echo "    → Run 'just groove-setup' to enable snap-on/snap-off discovery."
     fi
 
@@ -244,13 +262,37 @@ verify:
         ERRORS=$((ERRORS + 1))
     }
 
+    # The licence: a root licence file in any of the usual spellings (this
+    # template ships LICENSE.adoc), or a REUSE LICENSES/ directory holding at
+    # least one licence text: a non-empty <SPDX-ID>.<ext> file, per the REUSE
+    # spec (dotfiles and READMEs do not count).
+    check_licence() {
+        local cand
+        for cand in LICENSE LICENSE.txt LICENSE.md LICENSE.adoc; do
+            if [ -f "$cand" ]; then
+                echo "  OK:   $cand"
+                return 0
+            fi
+        done
+        if [ -n "$(find LICENSES -maxdepth 1 -type f -size +0c -name '*.*' ! -name '.*' ! -iname 'README*' 2>/dev/null | head -n 1)" ]; then
+            echo "  OK:   LICENSES/ (REUSE)"
+            return 0
+        fi
+        echo "  FAIL: LICENSE (or LICENSE.adoc, or REUSE LICENSES/) missing"
+        ERRORS=$((ERRORS + 1))
+    }
+
     check_community_file "SECURITY"
-    check_file "LICENSE"
+    check_licence
     check_community_file "CONTRIBUTING"
     check_either "README.adoc" "README.md"
-    check_file ".machine_readable/descriptiles/STATE.a2ml"
-    check_file ".machine_readable/descriptiles/META.a2ml"
-    check_file ".machine_readable/descriptiles/ECOSYSTEM.a2ml"
+    # Identity, state and ecosystem live in the repo deed (rsr-template-repo#209).
+    if DEED=$(bash scripts/deed-field.sh --find . 2>/dev/null) && bash scripts/deed-field.sh --has "$DEED" status; then
+        echo "  OK:   $DEED (status, meta, ecosystem)"
+    else
+        echo "  FAIL: repo deed (*_chora.deed) with a (status …) clause missing"
+        ERRORS=$((ERRORS + 1))
+    fi
     check_either "CHANGELOG.md" "CHANGELOG.adoc"
 
     # Check at least 1 workflow exists

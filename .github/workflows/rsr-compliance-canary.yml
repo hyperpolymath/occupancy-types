@@ -30,7 +30,7 @@ permissions:
   contents: read
 jobs:
   canary:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
       - name: Checkout
@@ -54,11 +54,9 @@ jobs:
           for f in *-STATUS-*.md *-COMPLETION-*.md *-COMPLETE.md *-VERIFIED-*.md; do
             [ -f "$f" ] && warn "stale snapshot present: $f (would be deleted)"
           done
-          # would-RENAME: legacy manifest name (a repo deed at root is the
-          # deed-era equivalent — standards#837)
-          if [ -f "AI.a2ml" ] && [ ! -f "0-AI-MANIFEST.a2ml" ] && ! ls *_chora.deed >/dev/null 2>&1; then
-            warn "AI.a2ml present without 0-AI-MANIFEST.a2ml or a repo deed (would be renamed)"
-          fi
+          # retired format: every .a2ml file is drift (facts belong in the deed)
+          a2ml_left=$(find . -path ./.git -prune -o -type f -name '*.a2ml' -print | head -5)
+          [ -z "$a2ml_left" ] || warn "retired .a2ml files present (move their facts into the repo deed): $(echo $a2ml_left)"
           # would-DELETE: duplicate community files
           [ -f "CONTRIBUTING.md" ] && [ -f "CONTRIBUTING.adoc" ] && warn "duplicate CONTRIBUTING.md + CONTRIBUTING.adoc (one would be removed)"
           if [ -f "README.md" ] && [ -f "README.adoc" ] && [ "$(wc -l < README.md)" -lt 5 ]; then
@@ -72,10 +70,14 @@ jobs:
           done
           # would-CREATE: missing required files
           [ -f "SECURITY.md" ] || [ -f ".github/SECURITY.md" ] || warn "no SECURITY.md (would be created)"
-          [ -f "CONTRIBUTING.md" ] || [ -f ".github/CONTRIBUTING.md" ] || warn "no CONTRIBUTING.md (would be created)"
+          # The estate writes its prose in AsciiDoc: CONTRIBUTING.adoc is the guide,
+          # not a gap (the .md was dropped in 1486d06 and the canary tripped on
+          # a rule that had diverged from the norm). Either form, root or .github/.
+          [ -f "CONTRIBUTING.md" ] || [ -f ".github/CONTRIBUTING.md" ] || [ -f "CONTRIBUTING.adoc" ] || [ -f ".github/CONTRIBUTING.adoc" ] \
+            || warn "no CONTRIBUTING.adoc or CONTRIBUTING.md (would be created)"
 
           # --- unfixable compliance gaps (also drift) ---
-          [ -f "0-AI-MANIFEST.a2ml" ] || [ -f "AI.a2ml" ] || ls *_chora.deed >/dev/null 2>&1 || warn "missing AI manifest (0-AI-MANIFEST.a2ml or repo deed *_chora.deed)"
+          ls *_chora.deed >/dev/null 2>&1 || warn "missing repo deed (*_chora.deed at the root)"
           [ -f "LICENSE" ] || [ -f "LICENSE.md" ] || [ -f "LICENSE.txt" ] || warn "missing LICENSE file"
           [ -f "README.adoc" ] || [ -f "README.md" ] || warn "missing README"
 

@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: MPL-2.0
 
 [project]
-name = "{{REPO}}"
+name = "occupancy-types"
 
 [[functions]]
 name = "build"

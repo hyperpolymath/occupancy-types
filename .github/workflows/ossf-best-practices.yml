@@ -16,7 +16,7 @@ permissions:
   contents: read
 jobs:
   openssf-compliance:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
     permissions:
       contents: read
@@ -44,11 +44,21 @@ jobs:
           echo "SECURITY file: OK ($SECFILE, $LINES lines)"
       - name: Check LICENSE exists
         run: |
-          if [ ! -f "LICENSE" ] && [ ! -f "LICENSE.txt" ] && [ ! -f "LICENSE.md" ]; then
-            echo "::error::LICENSE file is required for OpenSSF Best Practices"
-            exit 1
+          # A root licence file in any of the usual spellings, or a REUSE
+          # LICENSES/ directory holding at least one licence text: a non-empty
+          # <SPDX-ID>.<ext> file, per the REUSE spec (dotfiles and READMEs do not count).
+          for f in LICENSE LICENSE.txt LICENSE.md LICENSE.adoc; do
+            if [ -f "$f" ]; then
+              echo "LICENSE: OK ($f)"
+              exit 0
+            fi
+          done
+          if [ -n "$(find LICENSES -maxdepth 1 -type f -size +0c -name '*.*' ! -name '.*' ! -iname 'README*' 2>/dev/null | head -n 1)" ]; then
+            echo "LICENSE: OK (REUSE LICENSES/)"
+            exit 0
           fi
-          echo "LICENSE: OK"
+          echo "::error::LICENSE file is required for OpenSSF Best Practices"
+          exit 1
       - name: Check CONTRIBUTING exists
         run: |
           if [ ! -f "CONTRIBUTING.md" ] && [ ! -f "CONTRIBUTING.adoc" ] \
@@ -64,18 +74,24 @@ jobs:
             exit 1
           fi
           echo "README: OK"
-      - name: Check .machine_readable directory and STATE.a2ml
+      - name: Check .machine_readable directory and the repo deed
         run: |
           if [ ! -d ".machine_readable" ]; then
             echo "::error::.machine_readable/ directory is required"
             exit 1
           fi
 
-          if [ ! -f ".machine_readable/descriptiles/STATE.a2ml" ]; then
-            echo "::error::.machine_readable/descriptiles/STATE.a2ml is required"
+          # Project state is the (status …) clause of the repo deed
+          # (rsr-template-repo#209), which replaced descriptiles/STATE.a2ml.
+          if ! DEED=$(bash scripts/deed-field.sh --find .); then
+            echo "::error::exactly one <repo>_chora.deed is required at the root"
             exit 1
           fi
-          echo ".machine_readable/descriptiles/STATE.a2ml: OK"
+          if ! bash scripts/deed-field.sh --has "$DEED" status; then
+            echo "::error::$DEED has no (status …) clause"
+            exit 1
+          fi
+          echo "$DEED (status): OK"
       - name: Check CHANGELOG exists
         run: |
           if [ ! -f "CHANGELOG.md" ] && [ ! -f "CHANGELOG.adoc" ] && [ ! -f "CHANGES.md" ]; then

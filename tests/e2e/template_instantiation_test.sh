@@ -14,16 +14,14 @@
 
 
 # Test configuration
-TEMPLATE_ROOT="${1:-.}"
+TEMPLATE_ROOT="$(cd "${1:-.}" && pwd)"
 TEST_DIR="${TMPDIR:-/tmp}/rsr-template-test-$$"
 TEST_REPO_NAME="test-instantiated-repo"
 TEST_OWNER="test-owner"
-TEST_FORGE="github"
 TEST_AUTHOR="Test Author"
 TEST_AUTHOR_EMAIL="test@example.com"
 TEST_PROJECT_NAME="Test Project"
 TEST_DESCRIPTION="A test project instantiated from the RSR template"
-TEST_PRIMARY_LANGUAGE="Rust"
 
 if [ ! -d "$TEMPLATE_ROOT/archetypes" ]; then
     echo "Self-skipping: archetypes/ not found (repo is already instantiated)."
@@ -112,7 +110,9 @@ rm -rf "$TEST_REPO_PATH/.claude"
 # The origin is set to the INSTANTIATED name deliberately, for the same reason
 # the check below clears GITHUB_REPOSITORY: we want the checker to judge this as
 # a real minted repo, not to exempt itself as a template.
-if [ -d "$TEST_REPO_PATH/.git" ]; then
+# -e, not -d: in a linked worktree .git is a FILE pointing at the source
+# repo, and leaving it would make the git init below act on the source.
+if [ -e "$TEST_REPO_PATH/.git" ]; then
     rm -rf "$TEST_REPO_PATH/.git"
     log_pass ".git directory removed (fresh clone)"
 fi
@@ -172,6 +172,7 @@ INIT_ANSWERS=(
     "$TEST_AUTHOR_EMAIL"        # Author email
     ""                          # Author organization
     ""                          # Previous/alt email
+    ""                          # Author ORCID iD   -> none (line dropped)
     "$TEST_DESCRIPTION"         # Project description
     ""                          # Forge domain      -> default
     ""                          # Security email    -> default
@@ -193,9 +194,28 @@ if [ -d "$TEST_REPO_PATH/build/container" ]; then
 fi
 INIT_ANSWERS+=("Y")             # Proceed?
 
-if ! (cd "$TEST_REPO_PATH" && printf '%s\n' "${INIT_ANSWERS[@]}" | just repo-init) > "$TEST_DIR/init.log" 2>&1; then
+# Provenance is resolved by tree equality against the template's history
+# (scripts/resolve-template-pin.sh). Read it from the checkout under test, not
+# from GitHub: this copy is of the work tree in hand. A dirty work tree has no
+# commit to name, so that case mints unpinned, loudly, rather than failing for
+# a reason that has nothing to do with instantiation.
+PIN_ENV=(RSR_TEMPLATE_URL="$TEMPLATE_ROOT")
+if [ -n "$(git -C "$TEMPLATE_ROOT" status --porcelain 2>/dev/null)" ]; then
+    log_warn "template work tree is dirty — minting with RSR_ALLOW_UNPINNED=1"
+    PIN_ENV+=(RSR_ALLOW_UNPINNED=1)
+fi
+
+if ! (cd "$TEST_REPO_PATH" && printf '%s\n' "${INIT_ANSWERS[@]}" | env "${PIN_ENV[@]}" just repo-init) > "$TEST_DIR/init.log" 2>&1; then
     log_error "just repo-init failed:"
     cat "$TEST_DIR/init.log" >&2
+    # The lane's verdict is one line in a 200-line log; the reason is the last
+    # few lines of init.log. Emit them as an annotation so the failure is
+    # legible where the failure is reported (PR check list, API, the log
+    # summary), not only to whoever downloads the raw log.
+    if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+        printf '::error title=just repo-init failed::%s\n' \
+            "$(tail -n 40 "$TEST_DIR/init.log" | awk '{printf "%s%%0A", $0}')"
+    fi
     exit 1
 fi
 
@@ -207,24 +227,23 @@ log_pass "just repo-init completed"
 
 log_step "Checking rendered Guix package identity"
 
-for guix_file in build/guix.scm; do
-    if [ ! -f "$TEST_REPO_PATH/$guix_file" ]; then
-        log_error "$guix_file is missing after instantiation"
-        exit 1
-    fi
-    if ! grep -qF "(name \"$TEST_REPO_NAME\")" "$TEST_REPO_PATH/$guix_file"; then
-        log_error "$guix_file does not use the lowercase repository slug as its Guix name"
-        exit 1
-    fi
-    if ! grep -qF "(home-page \"https://github.com/$TEST_OWNER/$TEST_REPO_NAME\")" "$TEST_REPO_PATH/$guix_file"; then
-        log_error "$guix_file does not contain the rendered project home page"
-        exit 1
-    fi
-    if grep -q 'rsr-template-repo' "$TEST_REPO_PATH/$guix_file"; then
-        log_error "$guix_file still contains the template repository identity"
-        exit 1
-    fi
-done
+guix_file="build/guix.scm"
+if [ ! -f "$TEST_REPO_PATH/$guix_file" ]; then
+    log_error "$guix_file is missing after instantiation"
+    exit 1
+fi
+if ! grep -qF "(name \"$TEST_REPO_NAME\")" "$TEST_REPO_PATH/$guix_file"; then
+    log_error "$guix_file does not use the lowercase repository slug as its Guix name"
+    exit 1
+fi
+if ! grep -qF "(home-page \"https://github.com/$TEST_OWNER/$TEST_REPO_NAME\")" "$TEST_REPO_PATH/$guix_file"; then
+    log_error "$guix_file does not contain the rendered project home page"
+    exit 1
+fi
+if grep -q 'rsr-template-repo' "$TEST_REPO_PATH/$guix_file"; then
+    log_error "$guix_file still contains the template repository identity"
+    exit 1
+fi
 
 log_pass "Guix package names and home pages were rendered correctly"
 
@@ -264,9 +283,14 @@ log_step "Checking for un-deleted template instruction blocks"
 # CODE_OF_CONDUCT.md, each one naming "Squisher Corpus" as the project it
 # protects and routing conduct reports to the wrong repository. Measured
 # 2026-08-04. Catch it by name instead.
-LEFTOVER=$(grep -rl 'TEMPLATE INSTRUCTIONS' "$TEST_REPO_PATH" \
-    --exclude-dir=.git 2>/dev/null \
-    | grep -vE '/(scripts/strip-instruction-blocks\.rs|build/just/repo-init\.just|tests/e2e/template_instantiation_test\.sh|tests/workflows/mint_cleanup_test\.sh)$' || true)
+# Over the repository's own files only (git-ignored copies are not this repo's),
+# minus the machinery the mint carries verbatim: the same manifest repo-init's
+# leftover check reads, so the two cannot disagree about what is exempt.
+LEFTOVER=$(cd "$TEST_REPO_PATH" && git ls-files --cached --others --exclude-standard \
+    | grep -vxF -f <(sed -e 's/#.*//' -e 's/[[:space:]]*$//' .machine_readable/mint-verbatim.txt | grep -v '^$') \
+    | while IFS= read -r f; do
+        [ -f "$f" ] && grep -q 'TEMPLATE INSTRUCTIONS' "$f" && echo "$TEST_REPO_PATH/$f"
+    done || true)
 if [ -n "$LEFTOVER" ]; then
     log_error "just repo-init left a TEMPLATE INSTRUCTIONS block in:"
     echo "$LEFTOVER" | sed 's/^/    /' >&2
@@ -298,15 +322,15 @@ log_step "Verifying build system works after instantiation"
 
 if [ -f "$TEST_REPO_PATH/src/interface/ffi/build.zig" ]; then
     if command -v zig &> /dev/null; then
-        cd "$TEST_REPO_PATH/src/interface/ffi"
-        if ZIG_GLOBAL_CACHE_DIR="$TEST_DIR/zig-global-cache" \
-           ZIG_LOCAL_CACHE_DIR="$TEST_DIR/zig-local-cache" zig build 2>&1; then
-            log_pass "Zig build successful"
+        cd "$TEST_REPO_PATH/src/interface/ffi" || exit 1
+        if ZIG_GLOBAL_CACHE_DIR="${ZIG_GLOBAL_CACHE_DIR:-$TEST_DIR/zig-global-cache}" \
+           ZIG_LOCAL_CACHE_DIR="${ZIG_LOCAL_CACHE_DIR:-$TEST_DIR/zig-local-cache}" zig build test 2>&1; then
+            log_pass "Zig build and FFI unit/integration tests successful"
         else
-            log_error "Zig build failed"
+            log_error "Zig build test failed"
             exit 1
         fi
-        cd - > /dev/null
+        cd - > /dev/null || exit 1
     else
         # Zig is OPTIONAL at this point. Everything this e2e exists to prove
         # about instantiation - placeholders, instruction blocks, structure -
@@ -336,7 +360,7 @@ for file in "${CRITICAL_FILES[@]}"; do
     if [ -f "$TEST_REPO_PATH/$file" ]; then
         # Check that it's not just a template (contains some actual content)
         if grep -q "$TEST_PROJECT_NAME\|$TEST_AUTHOR\|$TEST_REPO_NAME" "$TEST_REPO_PATH/$file" 2>/dev/null || \
-           [ $(wc -l < "$TEST_REPO_PATH/$file") -gt 10 ]; then
+           [ "$(wc -l < "$TEST_REPO_PATH/$file")" -gt 10 ]; then
             log_pass "File instantiated: $file"
         else
             log_error "File appears to be a template: $file"
@@ -354,12 +378,10 @@ done
 
 log_step "Verifying machine-readable metadata"
 
-METADATA_FILES=(
-    ".machine_readable/descriptiles/STATE.a2ml"
-    ".machine_readable/descriptiles/META.a2ml"
-)
-
-for file in "${METADATA_FILES[@]}"; do
+# Identity, state, meta and ecosystem are clauses of the minted repo's own
+# deed (rsr-template-repo#209); the journal is docs/status/ROADMAP.adoc.
+CHILD_DEED="${TEST_REPO_NAME}_chora.deed"
+for file in "$CHILD_DEED" "docs/status/ROADMAP.adoc"; do
     if [ -f "$TEST_REPO_PATH/$file" ]; then
         log_pass "Metadata file exists: $file"
     else
@@ -367,6 +389,55 @@ for file in "${METADATA_FILES[@]}"; do
         exit 1
     fi
 done
+# The a2ml format is retired estate-wide: a mint carries no .a2ml file
+# anywhere, not merely none of the names that used to be descriptiles.
+A2ML_LEFT=$(cd "$TEST_REPO_PATH" && find . -path ./.git -prune -o -name '*.a2ml' -print)
+if [ -n "$A2ML_LEFT" ]; then
+    log_error "mint carries retired .a2ml files:"
+    echo "$A2ML_LEFT" >&2
+    exit 1
+fi
+log_pass "Mint carries no .a2ml file"
+# The template's identity must not survive into the mint: its clade (a mint
+# writes none: the clade is an optional finding aid), its prefixed name, its
+# maturity, its uuid name, or an unfilled token.
+DEED_READ="$TEST_REPO_PATH/scripts/deed-field.sh"
+CHILD="$TEST_REPO_PATH/$CHILD_DEED"
+if bash "$DEED_READ" --has "$CHILD" clade \
+   || [[ -n "$(bash "$DEED_READ" "$CHILD" identity prefixed-name || true)" ]] \
+   || [ "$(bash "$DEED_READ" "$CHILD" maturity level)" != "experimental" ] \
+   || [ "$(bash "$DEED_READ" "$CHILD" status phase)" != "incubating" ] \
+   || [ "$(bash "$DEED_READ" "$CHILD" ecosystem project)" != "$TEST_REPO_NAME" ] \
+   || [ "$(bash "$DEED_READ" "$CHILD" "" repo-uuid)" != "github.com/${TEST_OWNER}/${TEST_REPO_NAME}" ]; then
+    log_error "child deed still carries the template's identity, or lacks its own"
+    exit 1
+fi
+# Unfilled tokens in the child deed are caught by check-no-placeholders.sh
+# above, which scans every file and exempts metasyntactic tokens such as
+# the {{PLACEHOLDER}} the deed's prose mentions.
+log_pass "Child deed carries the minted repo's identity"
+
+# Mint-time clauses (rsr-template-repo#209 follow-up): the profile is the
+# minimal one, not the template's maximal spine profile; provenance and the
+# variant record name the template commit; exactly one canon pin survives.
+if [ "$(bash "$DEED_READ" "$CHILD" rsr-profile role 2>/dev/null || true)" = "spine" ]; then
+    log_error "child (rsr-profile) is still the template's spine profile"
+    exit 1
+fi
+for clause in "provenance template-commit" "variant parent-pin"; do
+    # shellcheck disable=SC2086
+    val=$(bash "$DEED_READ" "$CHILD" $clause 2>/dev/null || true)
+    if [ -z "$val" ]; then
+        log_error "child deed has no ($clause) value"
+        exit 1
+    fi
+done
+CANON_N=$(grep -cE '^[[:space:]]*[(]canon([[:space:]]|$)' "$CHILD" || true)
+if [ "$CANON_N" != "1" ]; then
+    log_error "child deed carries $CANON_N (canon …) clauses, need exactly 1"
+    exit 1
+fi
+log_pass "Child deed carries minimal (rsr-profile), (variant), (provenance) and one (canon)"
 
 #==============================================================================
 # WWW SITE-OPERATIONS BUNDLE (issue #53)

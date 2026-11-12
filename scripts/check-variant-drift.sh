@@ -4,10 +4,11 @@
 # check-variant-drift.sh — verify the shared RSR spine of this variant
 # template stays convergent with its parent at the pinned commit.
 #
-# Reads the contract at .machine_readable/descriptiles/VARIANT.a2ml:
+# Reads the contract from the repo deed's (variant) clause
+# (<repo>_chora.deed, read with scripts/deed-field.sh):
 #   - every tracked file NOT declared added/removed/diverged/pending/operational
 #     must be identical to the parent's copy at parent-pin, modulo the
-#     [normalise] rules (action-pin SHAs, self-name substitution);
+#     (normalise) rules (action-pin SHAs, self-name substitution);
 #   - declared additions must exist here and not in the parent;
 #   - declared removals must exist in the parent and not here.
 #
@@ -18,26 +19,44 @@ set -euo pipefail
 
 PARENT_DIR="${1:?usage: check-variant-drift.sh <parent-checkout-dir> [self-dir]}"
 SELF_DIR="${2:-.}"
-CONTRACT="$SELF_DIR/.machine_readable/descriptiles/VARIANT.a2ml"
+READ="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/deed-field.sh"
 
-[ -f "$CONTRACT" ] || { echo "FAIL: contract not found: $CONTRACT"; exit 1; }
+# The retired VARIANT.a2ml is not read: a repo still carrying one must be
+# migrated to the (variant) clause, and saying so beats guessing at it.
+if [ -f "$SELF_DIR/.machine_readable/descriptiles/VARIANT.a2ml" ]; then
+  echo "FAIL: $SELF_DIR carries the retired VARIANT.a2ml — move its contract into the deed's (variant) clause"
+  exit 1
+fi
+DEED=$(bash "$READ" --find "$SELF_DIR") || { echo "FAIL: no single *_chora.deed in $SELF_DIR"; exit 1; }
+bash "$READ" --has "$DEED" variant || { echo "FAIL: $DEED has no (variant) clause"; exit 1; }
 
-SELF_NAME=$(sed -n 's/^project = "\(.*\)"/\1/p' "$CONTRACT" | head -1)
-PARENT_SLUG=$(sed -n 's/^parent = "\(.*\)"/\1/p' "$CONTRACT" | head -1)
+SELF_NAME=$(bash "$READ" "$DEED" variant project || true)
+PARENT_SLUG=$(bash "$READ" "$DEED" variant parent || true)
 PARENT_NAME="${PARENT_SLUG##*/}"
-PIN=$(sed -n 's/^parent-pin = "\([0-9a-f]*\)".*/\1/p' "$CONTRACT" | head -1)
+PIN=$(bash "$READ" "$DEED" variant parent-pin || true)
+[[ "$PIN" =~ ^[0-9a-f]{40}$ ]] || PIN=""
 
-# Extract the paths array of one [paths.<section>] block.
+# The template comparison below cannot judge a minted repo: the mint renders
+# tokens and rewrites files, so most spine files differ by design.
+ROLE=$(bash "$READ" "$DEED" variant role 2>/dev/null || true)
+# A minted repo that recorded its answers is checked EXACTLY: the mint is
+# replayed from the pinned template and the child is diffed against that
+# (scripts/check-mint-drift.sh). The approximate comparison below remains for
+# variant templates, and for children minted before (mint-answers) existed.
+if [ "$ROLE" = "minted-repo" ] && bash "$READ" --has "$DEED" mint-answers; then
+  exec bash "$(dirname "$READ")/check-mint-drift.sh" "$PARENT_DIR" "$SELF_DIR"
+fi
+if [ "$ROLE" = "minted-repo" ]; then
+  echo "NOTE: $DEED records :role \"minted-repo\" but no (mint-answers): it was minted"
+  echo "      before answers were recorded, so the mint cannot be replayed and rendered"
+  echo "      files are expected to differ below. Check the template pin with"
+  echo "      scripts/check-template-conformance.sh."
+fi
+
+# section_paths SECTION — the path list :SECTION of the (variant (paths …))
+# clause, one per line; nothing when the key is absent.
 section_paths() {
-  awk -v sec="[paths.$1]" '
-    $0 == sec { insec = 1; next }
-    insec && /^\[/ { insec = 0 }
-    insec && /^ *"/ {
-      line = $0
-      sub(/^ *"/, "", line); sub(/".*$/, "", line)
-      print line
-    }
-  ' "$CONTRACT"
+  bash "$READ" --list "$DEED" variant/paths "$1" 2>/dev/null || true
 }
 
 ADDED=$(section_paths added)
@@ -46,7 +65,9 @@ SKIP=$(printf '%s\n' "$(section_paths diverged)" \
                      "$(section_paths diverged-pending-upstream)" \
                      "$(section_paths operational-state)")
 
-in_list() { # $1 = path, $2 = newline list (entries ending in / are prefixes)
+# in_list PATH LIST — 0 when PATH is in the newline-separated LIST; an entry
+# ending in / matches as a directory prefix.
+in_list() {
   local p="$1" e
   while IFS= read -r e; do
     [ -z "$e" ] && continue
@@ -58,17 +79,18 @@ in_list() { # $1 = path, $2 = newline list (entries ending in / are prefixes)
   return 1
 }
 
-# Fold operational state out of a file before comparison: action-pin SHAs,
+# normalise FILE — print FILE with operational state folded out before comparison: action-pin SHAs,
 # then BOTH repo names → SELF (variant name first — it does not contain the
 # parent name as a substring, so order is safe). Folding both names on both
 # sides keeps inherited files that legitimately mention the parent by name
 # convergent, while still matching self-identity substitutions.
-normalise() { # $1 = file
+normalise() {
   sed -E -e 's/@[0-9a-f]{40}[^ ]*( # v[^ ]*)?/@PIN/g' \
          -e "s/$SELF_NAME/SELF/g" -e "s/$PARENT_NAME/SELF/g" "$1"
 }
 
 DRIFT=0
+# report MSG — record one drift finding and mark the run failed.
 report() { DRIFT=1; echo "DRIFT: $*"; }
 
 if [ -n "$PIN" ] && [ -d "$PARENT_DIR/.git" ]; then
@@ -117,6 +139,6 @@ done <<< "$REMOVED"
 if [ "$DRIFT" -eq 0 ]; then
   echo "PASS: spine convergent with $PARENT_SLUG@${PIN:0:12} (modulo declared variant paths)"
 else
-  echo "FAIL: undeclared drift against $PARENT_SLUG@${PIN:0:12} — update VARIANT.a2ml or re-converge"
+  echo "FAIL: undeclared drift against $PARENT_SLUG@${PIN:0:12} — update the deed's (variant) clause or re-converge"
   exit 1
 fi

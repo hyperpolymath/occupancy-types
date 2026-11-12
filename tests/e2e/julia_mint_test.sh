@@ -10,8 +10,9 @@
 # repo-init hunks it depends on (PACKAGE_UUID derivation; .in renames).
 #
 # Owner rulings exercised here (2026-09-19):
-#   D7  - the package uuid is generated at mint (derived, stable, v5)
-#   D6  - the minted workflows are lock-SSOT compliant (actions.lock ships)
+#   D7  - the package uuid is generated at mint (stable UUIDv8 profile C)
+#   D6  - the minted workflows are lock-SSOT compliant (the archetype's
+#         lock fragment merges into the spine's actions.lock)
 #
 # Usage:
 #   JULIA_BIN=/path/to/julia bash tests/e2e/julia_mint_test.sh
@@ -28,28 +29,51 @@ SCRATCH="${SCRATCH:-$(mktemp -d /tmp/julia-mint-test.XXXXXX)}"
 trap 'rm -rf "$SCRATCH"' EXIT
 
 PASS=0; FAIL=0
+# Print the assertion description in $1 and increment the global PASS count.
 ok()   { echo "  PASS: $1"; PASS=$((PASS+1)); }
+# Print the assertion description in $1 and increment FAIL without exiting,
+# allowing subsequent assertions to run before the final failure summary.
 bad()  { echo "  FAIL: $1"; FAIL=$((FAIL+1)); }
 
 command -v "$JULIA" >/dev/null 2>&1 || { echo "SKIP: no julia binary (JULIA_BIN)"; exit 0; }
 [ -d "$OVERLAY" ] || { echo "FAIL: overlay not found at $OVERLAY"; exit 1; }
 
-cd "$SCRATCH"
+# Keep the bounded UUID/timeout checks and the real formatter regression
+# controls reachable from this acceptance entry point.
+if bash "$REPO_DIR/tests/workflows/julia_library_test.sh"; then
+    ok "UUID generator branches and Julia CI timeouts"
+else
+    bad "UUID generator branches or Julia CI timeouts"
+fi
+if JULIA_BIN="$JULIA" bash "$REPO_DIR/tests/e2e/julia_fmt_test.sh"; then
+    ok "shipped formatting command (positive and negative controls)"
+else
+    bad "shipped formatting command"
+fi
+
+cd "$SCRATCH" || exit 1
 
 # ── 1. overlay copy (as repo-init does) ────────────────────────────────
 cp -a "$OVERLAY/." .
 
 # ── 2. token substitution (as repo-init does) + hunk A (uuid derivation)
-OWNER=hyperpolymath; REPO=mintcheck; PROJECT_NAME=MintCheck
+export OWNER=hyperpolymath REPO=mintcheck PROJECT_NAME=MintCheck
 AUTHOR="Jonathan D.A. Jewell"; AUTHOR_EMAIL="owner@hyperpolymath.dev"
-FORGE=https://github.com; CURRENT_YEAR=$(date +%Y)
+export FORGE=https://github.com
+CURRENT_YEAR=$(date +%Y)
 LB='{{'; RB='}}'
-REPO_UUID=$(python3 -c "import uuid; print(uuid.uuid5(uuid.NAMESPACE_URL, '${FORGE}/${OWNER}/${REPO}'))")
-if command -v uuidgen >/dev/null 2>&1; then
-    PACKAGE_UUID=$(uuidgen --sha1 --namespace "$REPO_UUID" --name "julia:${REPO}")
-else
-    PACKAGE_UUID=$(python3 -c "import uuid; print(uuid.uuid5(uuid.UUID('${REPO_UUID}'), 'julia:${REPO}'))")
-fi
+# Execute the shipped rule rather than a copied UUID algorithm. The previous
+# v5 copy let this acceptance test pass while exercising the retired mint.
+export ARCHETYPE=julia-library
+UUID_RULE=$(awk '
+    /^    if \[ "\$ARCHETYPE" = "julia-library" \]; then$/ { copying = 1 }
+    copying { last = ($0 ~ /^    fi$/); sub(/^    /, ""); print; if (last) exit }
+' "$REPO_DIR/build/just/repo-init.just")
+[ -n "$UUID_RULE" ] || { bad "package UUID block not found in repo-init"; exit 1; }
+UUID_SCRIPT=$(mktemp)
+printf '%s\n' "$UUID_RULE" > "$UUID_SCRIPT"
+# shellcheck disable=SC1090
+. "$UUID_SCRIPT"
 for f in $(grep -rl "{{" . 2>/dev/null || true); do
     tmp=$(mktemp)
     sed -e "s|${LB}PROJECT_NAME${RB}|${PROJECT_NAME}|g" \
@@ -81,20 +105,20 @@ else
 fi
 
 # ── 4b. lock coverage (D6: actions.lock is the pin truth) ──────────────
-if python3 - <<'PY'
-import re, sys, pathlib
-wfdir = pathlib.Path(".github/workflows")
-lock_text = (wfdir / "actions.lock").read_text()
-for wf in sorted(wfdir.glob("*.yml")):
-    uses = {m.group(1) for line in wf.read_text().splitlines()
-            if (m := re.match(r'\s*uses:\s*(\S+)', line))}
-    sect = re.search(r"'" + re.escape(str(wf)) + r"':\s*\n((?:\s+-\s+'[^']+'\n?)*)", lock_text)
-    locked = set(re.findall(r"-\s+'([^']+)'", sect.group(1))) if sect else set()
-    if uses - locked:
-        print(f"  MISSING in lock: {wf.name}: {sorted(uses - locked)}")
-        sys.exit(1)
-PY
-then ok "every uses: ref is in actions.lock"; else bad "lockfile coverage gap"; fi
+# A minted tree holds the spine's workflows and lock as well as the
+# overlay's. Bring them in, merge the archetype's lock fragment as repo-init
+# does, and run the estate's own checker on the result.
+for wf in "$REPO_DIR"/.github/workflows/*.yml; do
+    [ -e ".github/workflows/$(basename "$wf")" ] || cp "$wf" .github/workflows/
+done
+cp "$REPO_DIR/.github/workflows/actions.lock" .github/workflows/actions.lock
+if bash "$REPO_DIR/scripts/rust-tool.sh" merge-actions-lock \
+        .github/workflows/actions.lock "$REPO_DIR/archetypes/julia-library/actions.lock" \
+    && bash "$REPO_DIR/scripts/check-lock-sync.sh" .github/workflows; then
+    ok "merged actions.lock passes check-lock-sync"
+else
+    bad "lockfile coverage gap"
+fi
 
 # ── 5. Pkg.instantiate + Pkg.test (Test + Aqua) ────────────────────────
 if "$JULIA" --project=. -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()' >/tmp/julia-mint-inst.log 2>&1; then
@@ -110,15 +134,80 @@ fi
 
 # ── 6. uuid derivation (D7) ────────────────────────────────────────────
 MINTED_UUID=$(sed -n 's/^uuid = "\(.*\)".*/\1/p' Project.toml | head -1)
-if python3 - "$MINTED_UUID" "$PACKAGE_UUID" <<'PY'
-import sys, uuid
-minted, derived = sys.argv[1], sys.argv[2]
-assert minted == derived, f"minted {minted} != derived {derived}"
-assert uuid.UUID(minted).version == 5
-PY
-then ok "package uuid is the derived v5"; else bad "package uuid derivation"; fi
-RE_MINT=$(python3 -c "import uuid; print(uuid.uuid5(uuid.UUID('${REPO_UUID}'), 'julia:${REPO}'))")
+if [ "$MINTED_UUID" = "$PACKAGE_UUID" ] \
+    && [ "$MINTED_UUID" = b4839a75-05b9-8c83-a497-2aa751ab7f19 ] \
+    && [[ "$MINTED_UUID" =~ ^[0-9a-f]{8}-[0-9a-f]{4}-8[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$ ]]; then
+    ok "package uuid is the expected UUIDv8 profile C identity"
+else
+    bad "package uuid derivation"
+fi
+RE_MINT=$(
+    # shellcheck disable=SC1090
+    . "$UUID_SCRIPT" >/dev/null
+    printf '%s\n' "$PACKAGE_UUID"
+)
+rm -f "$UUID_SCRIPT"
 [ "$RE_MINT" = "$MINTED_UUID" ] && ok "re-mint derives the same uuid (stable identity)" || bad "uuid not stable across re-mints"
+
+# ── 7. JET analysis — the SHIPPED invocation, actually executed ────────
+#
+# Issue #202: the overlay emitted `JET.test_package(path=".", julia_version="1")`
+# — the path/string form REMOVED in JET v0.12.0. It threw MethodError before
+# analysing anything, and nothing in this repository ever executed it, so it
+# shipped to every minted Julia repo. Syntax-checking the YAML could not catch
+# it; only running it can.
+#
+# Both controls are mandatory:
+#   positive — the clean minted package passes.
+#   negative — an injected inference error IS detected. If the negative control
+#              passes, this test is vacuous and its "PASS" means nothing.
+#
+# JET goes in its own environment so the package's Project.toml is untouched,
+# mirroring what the shipped workflow now does.
+JET_PKG=$(sed -n 's/^name = "\([^"]*\)".*/\1/p' Project.toml | head -1)
+JET_SRC="src/${JET_PKG}.jl"
+JET_ENV="$SCRATCH/.jet-env"
+
+# Provision JET 0.12 in JET_ENV, develop the fixture package from SCRATCH,
+# and run test_package on JET_PKG; return Julia's status for the controls below.
+run_jet() {
+    "$JULIA" -e "
+        using Pkg
+        Pkg.activate(\"$JET_ENV\")
+        Pkg.develop(path=\"$SCRATCH\")
+        Pkg.add(Pkg.PackageSpec(name=\"JET\", version=\"0.12\"))
+        using ${JET_PKG}, JET
+        if !hasmethod(JET.test_package, (Module,))
+            error(\"JET \", pkgversion(JET),
+                  \" has no test_package(::Module); the overlay pins an API that moved\")
+        end
+        JET.test_package(${JET_PKG})
+    "
+}
+
+if [ -n "$JET_PKG" ] && [ -f "$JET_SRC" ]; then
+    # positive control
+    if run_jet >/tmp/julia-mint-jet.log 2>&1; then
+        ok "JET: clean package passes (positive control)"
+    else
+        bad "JET: clean package failed — inspect; if this is an API/infra failure it is NOT a findings failure"
+        tail -12 /tmp/julia-mint-jet.log | sed 's/^/      /'
+    fi
+
+    # negative control — inject a concrete inference error INSIDE the module.
+    # Inside a function body, so the module still loads and JET can analyse it;
+    # a bare top-level call would throw at load time and prove nothing.
+    cp "$JET_SRC" "$JET_SRC.bak"
+    sed -i '/^end # module/i neg_control() = "string" + 1' "$JET_SRC"
+    if run_jet >/tmp/julia-mint-jet-neg.log 2>&1; then
+        bad "JET: injected inference error was NOT detected — this canary cannot fail, so its PASS is vacuous"
+    else
+        ok "JET: injected inference error detected (negative control)"
+    fi
+    mv "$JET_SRC.bak" "$JET_SRC"
+else
+    bad "JET: could not locate the minted package module (name=${JET_PKG:-<none>}, src=$JET_SRC)"
+fi
 
 echo
 echo "julia mint test: $PASS passed, $FAIL failed"

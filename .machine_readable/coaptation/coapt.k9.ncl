@@ -13,6 +13,7 @@ K9!
 {
   pedigree = {
     schema_version = "1.0.0",
+    component_type = "drift-check:coaptation-receipt",
     contractile_verb = "trust",   # provenance: the reading must equal its sources
     semantics = "coaptation-fidelity",
     security = {
@@ -20,7 +21,7 @@ K9!
       trust_level = "read-only comparison",
       allow_network = false,
       allow_filesystem_write = false,
-      allow_subprocess = true,    # runs the extractors + nickel to reproduce the reading
+      allow_subprocess = false,   # verify.sh runs the extractors + nickel; this record does not
     },
     metadata = {
       name = "coaptation",
@@ -35,29 +36,29 @@ K9!
   # Inputs the reading reads (the two sides of the face-off + the knowledge layer).
   inputs = {
     contractiles = [
-      ".machine_readable/contractiles/intend/Intentfile.a2ml",
-      ".machine_readable/contractiles/must/Mustfile.a2ml",
-      ".machine_readable/contractiles/trust/Trustfile.a2ml",
-      ".machine_readable/contractiles/adjust/Adjustfile.a2ml",
-      ".machine_readable/contractiles/dust/Dustfile.a2ml",
-      ".machine_readable/contractiles/bust/Bustfile.a2ml",
+      ".machine_readable/contractiles/intend/intend.k9.ncl",
+      ".machine_readable/contractiles/must/must.k9.ncl",
+      ".machine_readable/contractiles/trust/trust.k9.ncl",
+      ".machine_readable/contractiles/adjust/adjust.k9.ncl",
+      ".machine_readable/contractiles/dust/dust.k9.ncl",
+      ".machine_readable/contractiles/bust/bust.k9.ncl",
     ],
     descriptiles = [
-      ".machine_readable/descriptiles/CLADE.a2ml",
-      ".machine_readable/descriptiles/STATE.a2ml",
-      ".machine_readable/descriptiles/ECOSYSTEM.a2ml",
-      ".machine_readable/descriptiles/AGENTIC.a2ml",
-      ".machine_readable/descriptiles/anchors/ANCHOR.a2ml",
+      # The repo deed at the root (<repo>_chora.deed), read through
+      # scripts/deed-field.sh; it replaced CLADE/STATE/ECOSYSTEM/AGENTIC.a2ml
+      # (rsr-template-repo#209).
+      # Its (anchor …) clause replaced descriptiles/anchors/ANCHOR.a2ml.
+      "*_chora.deed",
     ],
     witness_map = ".machine_readable/coaptation/witness-map.ncl",
     grades = ".machine_readable/coaptation/grades.ncl",
     comparator = ".machine_readable/coaptation/coapt.ncl",
-    target = ".machine_readable/coaptation/receipts/latest.a2ml",
+    target = ".machine_readable/coaptation/receipts/latest.toml",
   },
 
   # Checks (all must hold).
   checks = [
-    { id = "clauses-atomise", desc = "every Xfile ###/#### clause lifts to a stable id verb.slug" },
+    { id = "clauses-atomise", desc = "every contractile declaration record (<verb>.k9.ncl `declaration`) lifts to a stable id verb.slug" },
     { id = "facts-extract",   desc = "every descriptile fact lifts to a stable id family.key" },
     { id = "coverage-total",  desc = "every clause is witnessed, refuted, probe-deferred, expected, or an explicit gap (Coverage is total)" },
     { id = "no-drift",        desc = "committed receipt byte-equals a freshly generated receipt" },

@@ -62,7 +62,7 @@ skip_test() {
 }
 
 echo "═══════════════════════════════════════════════════════════════"
-echo "  {{PROJECT}} — End-to-End Tests"
+echo "  OCCUPANCY_TYPES — End-to-End Tests"
 echo "═══════════════════════════════════════════════════════════════"
 echo ""
 
@@ -123,7 +123,7 @@ echo ""
 # else
 #     STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$VERISIM_URL/api/v1/hexads" \
 #         -H "Content-Type: application/json" \
-#         -d '{"tool":"{{PROJECT}}","modality":"document","content":"e2e test"}')
+#         -d '{"tool":"OCCUPANCY_TYPES","modality":"document","content":"e2e test"}')
 #     check_status "hexad POST" "201" "$STATUS"
 # fi
 
@@ -135,11 +135,11 @@ echo ""
 # now its only caller was benches/template_bench.sh, which discards the exit
 # code with `|| true` because a benchmark wants a duration, not a verdict —
 # so the test could fail on every run and nothing said so.
-INSTANTIATION_TEST="$(dirname "$0")/e2e/template_instantiation_test.sh"
+INSTANTIATION_TEST="$SCRIPT_DIR/e2e/template_instantiation_test.sh"
 if [ -f "$INSTANTIATION_TEST" ]; then
     echo ""
     echo "── Template instantiation ─────────────────────────────────────"
-    if bash "$INSTANTIATION_TEST" "$(dirname "$0")/.."; then
+    if bash "$INSTANTIATION_TEST" "$PROJECT_DIR"; then
         green "PASS: template instantiation"
         PASS=$((PASS + 1))
     else
