@@ -42,7 +42,7 @@ threads (choreographic-types A-3), occupancy has two theorems of its own.
 == Housekeeping done with this commit
 
 * `scripts/check-agda.sh` is the Agda gate (the template's `check-proofs.sh` is untouched).
-* README title `{{PROJECT_NAME}}` replaced.
+* README title placeholder (PROJECT_NAME) replaced.
 * `src/session_ir` (Python) removed; the v0 stepper is now `src/julia/`
   (SessionIR, Julia 1.10, standard library only), ported 2026-10-12 and
   verified against the Python on all 14 pinned fixtures and on

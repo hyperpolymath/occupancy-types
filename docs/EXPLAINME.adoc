@@ -1,14 +1,12 @@
 // SPDX-License-Identifier: CC-BY-SA-4.0
 // Copyright (c) Jonathan D.A. Jewell <j.d.a.jewell@open.ac.uk>
-= RSR Template Repo - Explainme
+= occupancy-types — claims to files
 image:https://img.shields.io/badge/License-MPL_2.0-blue.svg[License: MPL-2.0,link="https://opensource.org/licenses/MPL-2.0"]
 
 :toc:
 :icons: font
 
 This file explains how the key template claims map to real files.
-
-= occupancy-types — claims to files
 
 Project claims (ULTRAPLAN R0-B + R1). Receipts taxonomy: *TESTED* (command,
 toolchain/version, and result recorded here), *UNVERIFIED* (code + exact
@@ -145,7 +143,7 @@ are pending.
   provenance, and axiom/library record, followed by the policy-required
   Mathesis initial audit. This Lean receipt does not provide those items.
 
-= RSR template claims
+== RSR template claims
 
 The sections below describe the scaffold this project is built on.
 
