@@ -11,8 +11,9 @@ _<_ : Nat → Nat → Set
 m < n = suc m ≤ n
 
 ≤-step : ∀ {m n} → m ≤ n → m ≤ suc n
-≤-step z≤n     = z≤n
-≤-step (s≤s p) = s≤s (≤-step p)
+≤-step {zero}          _      = z≤n
+≤-step {suc _} {zero}  (le ())
+≤-step {suc _} {suc _} p      = s≤s (≤-step (≤-pred p))
 
 -- ≤-+ˡ, ≤-+ʳ, +-monoˡ-≤ and max-lub were defined here until resource-algebra
 -- 0b338c9 added the same four lemmas to its Prelude (with Instances/MinMax);

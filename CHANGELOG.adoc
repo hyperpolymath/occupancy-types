@@ -10,6 +10,14 @@ https://semver.org/spec/v2.0.0.html[Semantic Versioning].
 
 ==== Changed
 
+* resource-algebra pin `0b338c9` → `f0818f2` (`scripts/fetch-siblings.sh`).
+  At `f0818f2` the kernel's `_≤_` is a record over a relation defined by
+  recursion on ℕ, so that it checks under `--cubical-compatible` (PROOF-POLICY
+  §2.1); `z≤n` and `s≤s` are now functions, not constructors. `≤-step` in
+  `OccupancyTypes.Order` matched on them and no longer parsed. It now splits
+  on the indices, as the kernel's own lemmas do, using `le` and `≤-pred`. Its
+  statement is unchanged, the core and both expected rejections check, and
+  the cone raises no warning under `-W error`.
 * resource-algebra pin `b2c9f1f` → `0b338c9` (`scripts/fetch-siblings.sh`).
   That commit adds `≤-+ˡ`, `≤-+ʳ`, `+-monoˡ-≤` and `max-lub` to
   `ResourceAlgebra.Prelude`, with the same statements as the copies in
